@@ -205,10 +205,10 @@ body {
 .ref-block {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden; /* 图例已整体缩小以放下，不再显示滚动条 */
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 /* ---------- 摆棋备选框 ---------- */
@@ -470,17 +470,17 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .cmt-fail { color: var(--text-dim); }
 .cmt-empty { color: var(--text-dim); font-size: 12px; }
 
-/* ---------- 图例 ---------- */
-.legend { display: flex; flex-direction: column; gap: 8px; }
-.legend h2 { font-size: 13px; font-weight: 700; color: var(--text); }
+/* ---------- 图例（紧凑，整体缩小以在卡内一屏放下、不出滚动条） ---------- */
+.legend { display: flex; flex-direction: column; gap: 5px; }
+.legend h2 { font-size: 12px; font-weight: 700; color: var(--text); }
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 11.5px;
   color: var(--text-dim);
 }
-.swatch { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; }
+.swatch { width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; }
 /* 覆盖色画在深绿格底上，模拟实际叠加效果 */
 .swatch.ctrl-w    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-w), var(--ctrl-w)); }
 .swatch.ctrl-b    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-b), var(--ctrl-b)); }
@@ -488,15 +488,15 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .swatch.safe-red    { background: var(--sq-light); border: 3px solid var(--safe-red); }
 .swatch.safe-green  { background: var(--sq-light); border: 3px solid var(--safe-green); }
 .swatch.safe-yellow { background: var(--sq-light); border: 3px solid var(--safe-yellow); }
-.legend .note { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+.legend .note { font-size: 10.5px; line-height: 1.45; color: var(--text-dim); }
 .legend .note strong { color: var(--text); }
 
 footer {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
-  line-height: 1.7;
+  line-height: 1.45;
   border-top: 1px solid #3A3733;
-  padding-top: 12px;
+  padding-top: 9px;
 }
 footer a { color: var(--text-dim); }
 
