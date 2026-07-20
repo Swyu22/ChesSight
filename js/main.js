@@ -5,7 +5,7 @@ import { History } from './history.js';
 import { createEngine } from './engine.js';
 import { OPENINGS } from './openings.js';
 import { sound } from './sound.js';
-import { commentate, abortCommentary } from './commentary.js';
+import { enqueueCommentary, clearCommentaryQueue } from './commentary.js';
 
 const chess = new Chess();
 const history = new History(chess.fen());
@@ -20,6 +20,8 @@ let hint = null; // { from, to, san }：引擎提示的最佳走法
 let thinking = false;
 let autoHint = true; // 持续提示：每次局面变化后自动分析（默认开启）
 let showCommentary = true; // AI 实时解说：每步走完自动解说（默认开启）
+let vsCpu = false; // 与电脑对弈：对方由 Stockfish 自动应对（默认关闭）
+let cpuThinking = false;
 
 // 自由摆棋模式
 let setupMode = false;
@@ -40,6 +42,7 @@ const btnXray = $id('btn-xray');
 const btnSound = $id('btn-sound');
 const btnHint = $id('btn-hint');
 const chkAuto = $id('chk-auto');
+const chkVsCpu = $id('chk-vscpu');
 const btnSetup = $id('btn-setup');
 const trayEl = $id('tray');
 const trayPieces = $id('tray-pieces');
@@ -217,7 +220,7 @@ function renderAll() {
 
 // ---- AI 实时解说 ----
 function clearCommentary() {
-  abortCommentary();
+  clearCommentaryQueue();
   cmtList.replaceChildren();
   const p = document.createElement('p');
   p.className = 'cmt-empty';
@@ -243,17 +246,18 @@ function addCmtItem(label) {
   return txt;
 }
 
+// 立即建条目并入队解说；条目按走子顺序先建好（显示"…"），队列逐条填充，
+// 即使下棋很快也不会漏解说（每一步最终都补上）
 function streamCommentary(label, payload) {
   const el = addCmtItem(label);
-  let text = '';
-  commentate(payload, {
-    onDelta: (t) => {
-      text += t;
-      el.textContent = text;
+  el.classList.remove('cmt-fail');
+  enqueueCommentary(payload, {
+    onText: (t) => {
+      el.textContent = t || '…';
       cmtList.scrollTop = cmtList.scrollHeight;
     },
-    onDone: () => {
-      if (!text) el.textContent = '（无解说）';
+    onDone: (t) => {
+      if (!t.trim()) el.textContent = '（暂无解说）';
     },
     onError: () => {
       el.textContent = '解说暂不可用';
@@ -399,10 +403,49 @@ async function runEngineHint() {
   renderAll();
 }
 
-// 每次局面变化后的统一出口：重绘 + 持续提示自动分析
+// ---- 与电脑对弈：对方（= 非当前棋盘视角方）由 Stockfish 自动应对 ----
+// 你的一方 = 棋盘朝向 board.getOrientation()；翻转棋盘即交换阵营，对方随之改变。
+function opponentToMove() {
+  return vsCpu && !setupMode && !isLocked() && chess.turn() !== board.getOrientation();
+}
+
+async function maybeComputerMove() {
+  if (cpuThinking || !opponentToMove()) return;
+  cpuThinking = true;
+  const requestFen = chess.fen();
+  let uci;
+  try {
+    uci = await engine.bestMove(requestFen, 1000);
+  } catch {
+    cpuThinking = false;
+    return;
+  }
+  cpuThinking = false;
+  // 期间局面/开关/视角可能已变，重新校验后再落子
+  if (chess.fen() !== requestFen || !opponentToMove()) return;
+  if (!uci || uci === '(none)') return;
+  const from = uci.slice(0, 2);
+  const to = uci.slice(2, 4);
+  let made;
+  try {
+    made = uci[4] ? chess.move({ from, to, promotion: uci[4] }) : chess.move({ from, to });
+  } catch {
+    return;
+  }
+  history.push(made);
+  clearSelection();
+  clearHint();
+  playMoveSound(made);
+  requestCommentary(made);
+  afterPositionChange();
+}
+
+// 每次局面变化后的统一出口：重绘 → 若轮到电脑则自动应对，否则持续提示自动分析
 function afterPositionChange() {
   renderAll();
-  if (autoHint && !setupMode && !isLocked()) runEngineHint();
+  if (setupMode || isLocked()) return;
+  if (opponentToMove()) maybeComputerMove(); // 电脑回合：自动走子（无需再单独提示）
+  else if (autoHint) runEngineHint();          // 你的回合：显示最佳走法提示
 }
 
 // ---- 摆棋模式 ----
@@ -689,12 +732,14 @@ btnFlip.addEventListener('click', () => {
   abortPromotion(); // 翻转后选子框坐标失效，直接取消
   board.setOrientation(board.getOrientation() === 'w' ? 'b' : 'w');
   renderAll();
+  // 翻转即交换阵营：若翻转后轮到（新的）对方，电脑接手继续走
+  if (opponentToMove()) maybeComputerMove();
 });
 
 btnUndo.addEventListener('click', () => {
   if (setupMode || !history.canUndo()) return;
   abortPromotion();
-  abortCommentary(); // 在途解说随局面回退作废；已有解说保留
+  clearCommentaryQueue(); // 回退：清空待解说队列（不再补已撤销之后的着法）
   chess.undo();
   history.undo();
   clearSelection();
@@ -729,14 +774,20 @@ bindToggle(btnXray, () => showXray, (v) => { showXray = v; });
 bindToggle(btnSound, () => sound.isEnabled(), (v) => sound.setEnabled(v));
 bindToggle(btnCommentary, () => showCommentary, (v) => {
   showCommentary = v;
-  if (!v) abortCommentary();
+  if (!v) clearCommentaryQueue(); // 关闭自动解说：清空待解说队列并中止在途
 });
 
 btnHint.addEventListener('click', runEngineHint);
 
 chkAuto.addEventListener('change', () => {
   autoHint = chkAuto.checked;
-  if (autoHint && !setupMode && !isLocked()) runEngineHint();
+  if (autoHint && !setupMode && !isLocked() && !opponentToMove()) runEngineHint();
+});
+
+chkVsCpu.addEventListener('change', () => {
+  vsCpu = chkVsCpu.checked;
+  // 勾选时若正轮到对方，电脑立即接手；取消时什么都不做（你继续手动走）
+  if (vsCpu && opponentToMove()) maybeComputerMove();
 });
 
 // F1 快捷键触发引擎提示（拦截浏览器默认帮助）
@@ -784,5 +835,17 @@ window.app = {
   },
 };
 
+// 解说卡片与菜单卡片等高（含开局简介展开等内容变化）；窄屏由 CSS 固定高度接管
+const menuPanelEl = document.querySelector('.panel:not(.panel-cmt)');
+const cmtPanelEl = document.querySelector('.panel-cmt');
+function syncCmtHeight() {
+  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
+  else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
+}
+if (window.ResizeObserver) new ResizeObserver(syncCmtHeight).observe(menuPanelEl);
+window.addEventListener('resize', syncCmtHeight);
+syncCmtHeight();
+
 renderAll();
+syncCmtHeight();
 if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面

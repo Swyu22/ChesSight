@@ -60,8 +60,18 @@ export function createEngine(workerUrl) {
   }
 
   // 返回 UCI 着法字符串（如 'e2e4'、'a7a8q'），无着法时返回 '(none)'。
-  // searchmoves：限定搜索的着法列表（LAN 格式），用于防重复等过滤
-  async function bestMove(fen, movetime = 1200, searchmoves = null, onProgress = null) {
+  // searchmoves：限定搜索的着法列表（LAN 格式），用于防重复等过滤。
+  // 串行化：单 worker 一次只能算一个局面，持续提示与「与电脑对弈」可能并发调用，
+  // 用 promise 链保证一个算完再算下一个，避免 bestmove 响应串扰。
+  let chain = Promise.resolve();
+  function bestMove(fen, movetime = 1200, searchmoves = null, onProgress = null) {
+    const task = () => rawBestMove(fen, movetime, searchmoves, onProgress);
+    const p = chain.then(task, task);
+    chain = p.then(() => {}, () => {}); // 吞掉结果/异常以维持链路
+    return p;
+  }
+
+  async function rawBestMove(fen, movetime, searchmoves, onProgress) {
     await init(onProgress);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {

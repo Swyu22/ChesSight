@@ -17,8 +17,8 @@
   --safe-green: #2FB344;
   --safe-yellow: #E8A800;
   /* 智能自适应：宽度充足时撑满上下沿（100vh - 上下留白），
-     否则按剩余宽度收缩（650px = 两列面板 + 间距 + 页边距），永不出现滚动 */
-  --board-size: min(calc(100vh - 24px), calc(100vw - 650px));
+     否则按剩余宽度收缩（菜单卡 300 + 解说列 300 + 间距/页边距 ≈ 672），永不出现滚动 */
+  --board-size: min(calc(100vh - 24px), calc(100vw - 672px));
   --sq: calc(var(--board-size) / 8);
 }
 
@@ -196,7 +196,31 @@ body {
   flex-direction: column;
   gap: 14px;
 }
-.panel-side { width: 272px; }
+/* 右侧栏：解说卡片（与菜单卡等大，固定于顶部）+ 图例/署名区（下方，余量内滚动） */
+.side-col {
+  width: 300px;
+  height: var(--board-size);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* 解说卡片：与菜单卡同宽同高（高度由 JS 镜像菜单卡），内部解说窗撑满并滚动 */
+.panel-cmt {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+/* 图例 + 署名：填满解说卡片下方余量，内容过多时本区内滚动（不动解说卡片） */
+.ref-block {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 /* ---------- 摆棋备选框 ---------- */
 .tray {
@@ -436,12 +460,14 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .opening-side.w { background: var(--sq-light); color: #3A3733; }
 .opening-side.b { background: #3A3733; color: var(--sq-light); border: 1px solid #55524E; }
 
-/* ---------- AI 实时解说 ---------- */
-.commentary { display: flex; flex-direction: column; gap: 8px; }
-.cmt-head { display: flex; justify-content: space-between; align-items: center; }
+/* ---------- AI 实时解说 ----------
+   解说卡片高度 = 菜单卡（JS 镜像）；解说窗 flex 撑满卡片剩余空间，
+   条目累积时在窗内向上滚动、卡片大小固定不再增高 */
+.cmt-head { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; }
 .cmt-head h2 { font-size: 13px; font-weight: 700; }
 .cmt-list {
-  max-height: 34vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -489,7 +515,10 @@ footer a { color: var(--text-dim); }
 @media (max-width: 1024px) {
   :root { --board-size: min(94vw, 70vh); }
   .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; }
-  .panel, .panel-side { width: var(--board-size); max-height: none; overflow: visible; }
+  .panel { width: var(--board-size); max-height: none; overflow: visible; }
+  .side-col { width: var(--board-size); height: auto; }
+  .ref-block { overflow: visible; }
+  .panel-cmt { height: 320px !important; } /* 堆叠时给解说卡片固定高度 */
   .brand {
     position: static;
     width: fit-content;
