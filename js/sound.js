@@ -56,19 +56,21 @@ function safe(fn) {
 export const sound = {
   setEnabled(v) { enabled = v; },
   isEnabled: () => enabled,
-  // 在首个用户手势内创建并解锁 AudioContext（含一段静音节点，满足 iOS 的手势内启动要求），
-  // 使第一步棋的音效就能正常发声，而不必先切换一次音效开关。
+  // 在用户手势内解锁 AudioContext（iOS/移动端自动播放策略）：播放一段 1 采样的缓冲源
+  // 并 resume，是 iOS 上最可靠的解锁方式，使第一步棋即有音效，无需先切换一次音效开关。
+  // 返回 true 表示已进入 running 状态。
   unlock() {
     try {
       const c = ac();
-      const o = c.createOscillator();
-      const g = c.createGain();
-      g.gain.value = 0;
-      o.connect(g).connect(c.destination);
-      o.start();
-      o.stop(c.currentTime + 0.01);
-    } catch { /* 忽略 */ }
+      const src = c.createBufferSource();
+      src.buffer = c.createBuffer(1, 1, 22050); // 1 采样静音缓冲
+      src.connect(c.destination);
+      src.start(0);
+      if (c.state !== 'running' && c.resume) c.resume();
+      return c.state === 'running';
+    } catch { return false; }
   },
+  isReady: () => !!ctx && ctx.state === 'running',
   // 走子：单声闷实的木质"哒"
   move: safe(() => knock(0, { body: 175, dur: 0.085, vol: 0.5, noiseHz: 520, noiseVol: 0.3 })),
   // 吃子：先脆后沉的"嗒-咚"双击
