@@ -62,22 +62,7 @@ const openingCons = $id('opening-cons');
 
 const boardEl = $id('board');
 const board = createBoard(boardEl);
-
-// 解说/图例卡片与菜单卡片等高、上下沿对齐（桌面）：镜像菜单卡片高度，卡内解说窗固定较短、
-// 图例区在余量内滚动。每次 renderAll 结束都会调用，覆盖提示出现/开局简介展开等高度变化。
-const menuPanelEl = document.querySelector('.panel:not(.panel-side)');
-const cmtPanelEl = document.querySelector('.panel-side');
-function syncCmtHeight() {
-  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
-  else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
-}
-// rAF 去抖：读高度前先让浏览器完成回流（解决窗口缩放 / 提示换行等回流后再读的时序问题）
-let syncScheduled = false;
-function scheduleSync() {
-  if (syncScheduled) return;
-  syncScheduled = true;
-  requestAnimationFrame(() => { syncScheduled = false; syncCmtHeight(); });
-}
+// 解说卡与菜单卡等高由 CSS `.cards { align-items: stretch }` 自动保证，无需 JS 镜像高度
 
 for (const op of OPENINGS) {
   const o = document.createElement('option');
@@ -232,8 +217,6 @@ function renderAll() {
   btnRedo.disabled = setupMode || !history.canRedo();
   btnHint.disabled = setupMode || thinking || isLocked();
   openingSelect.disabled = setupMode;
-  syncCmtHeight();  // 立即同步（同步的 DOM 改动已生效）
-  scheduleSync();   // 再于下一帧回流后补一次（提示换行等异步高度变化）
 }
 
 // ---- AI 实时解说 ----
@@ -852,9 +835,6 @@ window.app = {
     afterPositionChange();
   },
 };
-
-if (window.ResizeObserver) new ResizeObserver(scheduleSync).observe(menuPanelEl);
-window.addEventListener('resize', scheduleSync);
 
 renderAll();
 if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面

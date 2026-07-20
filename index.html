@@ -35,7 +35,9 @@
       </div>
     </aside>
     <div id="board" class="board" aria-label="棋盘"></div>
-    <aside class="panel">
+    <div class="side">
+    <div class="cards">
+    <aside class="panel menu-panel">
       <div id="status" class="status" aria-live="polite">加载中…</div>
       <div id="hint" class="hint" aria-live="polite" hidden></div>
       <button id="btn-hint" class="btn-hint-big">💡 提示最佳走法<span class="kbd">F1</span></button>
@@ -73,7 +75,9 @@
       <div id="cmt-list" class="cmt-list" aria-live="polite">
         <p class="cmt-empty">走一步棋，听听 AI 怎么说 ♟</p>
       </div>
-      <div class="ref-block">
+    </aside>
+    </div>
+    <aside class="panel legend-card">
       <div class="legend">
         <h2>图例</h2>
         <div class="legend-item"><span class="swatch ctrl-w"></span>仅白方控制</div>
@@ -82,15 +86,16 @@
         <div class="legend-item"><span class="swatch safe-red"></span>被攻击（无论有无保护）</div>
         <div class="legend-item"><span class="swatch safe-green"></span>未被攻击 · 有保护</div>
         <div class="legend-item"><span class="swatch safe-yellow"></span>未被攻击 · 无保护（潜在弱点）</div>
-        <p class="note">兵只斜吃、<strong>直进格不算攻击</strong>；口径为几何控制（含被牵制子、贴敌王）。X-Ray 虚线 = 各子杀伤线（蓝白·红黑），橙箭头 = 引擎最佳走法。</p>
+        <p class="note">注：兵只控制左右斜前方两格，<strong>直进格不算攻击</strong>。口径为几何控制——被牵制的子照常计入，贴着敌王的子也计为受王攻击。</p>
+        <p class="note">X-Ray 虚线箭头 = 各棋子的杀伤路线（蓝 = 白方、红 = 黑方）；橙色粗箭头 = 引擎提示的最佳走法。</p>
       </div>
       <footer>
         棋子素材：<a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces" target="_blank" rel="noopener">cburnett</a>（Colin M.L. Burnett）· CC-BY-SA 3.0 · Wikimedia Commons<br>
         规则引擎：<a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a> · BSD-2-Clause<br>
         分析引擎：<a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">Stockfish.js 18</a> · GPLv3
       </footer>
-      </div>
     </aside>
+    </div>
   </div>
   <script type="module" src="./js/main.js"></script>
 </body>
