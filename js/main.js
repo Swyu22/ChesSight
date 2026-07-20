@@ -62,7 +62,23 @@ const openingCons = $id('opening-cons');
 
 const boardEl = $id('board');
 const board = createBoard(boardEl);
-// 解说卡与菜单卡等高由 CSS `.cards { align-items: stretch }` 自动保证，无需 JS 镜像高度
+
+// 解说卡片高度 = 菜单卡片高度（桌面）：显式镜像，使解说条目累积时解说窗内部滚动、
+// 卡片本身不再变长（.cards 用 align-items:flex-start，菜单卡不被解说内容撑高）。
+const menuPanelEl = document.querySelector('.menu-panel');
+const cmtPanelEl = document.querySelector('.panel-side');
+function syncCmtHeight() {
+  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
+  else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
+}
+let syncScheduled = false;
+function scheduleSync() { // rAF 去抖：回流完成后再读高度，避免提示换行 / 缩放时读到旧值
+  if (syncScheduled) return;
+  syncScheduled = true;
+  requestAnimationFrame(() => { syncScheduled = false; syncCmtHeight(); });
+}
+if (window.ResizeObserver) new ResizeObserver(scheduleSync).observe(menuPanelEl);
+window.addEventListener('resize', scheduleSync);
 
 // 首个用户手势即解锁音频（浏览器自动播放策略下 AudioContext 初始为 suspended），
 // 使第一步棋就有音效，无需先切换一次音效开关。桌面与移动端同样处理。
@@ -224,6 +240,8 @@ function renderAll() {
   btnRedo.disabled = setupMode || !history.canRedo();
   btnHint.disabled = setupMode || thinking || isLocked();
   openingSelect.disabled = setupMode;
+  syncCmtHeight();  // 立即同步
+  scheduleSync();   // 下一帧回流后补一次（提示换行等异步高度变化）
 }
 
 // ---- AI 实时解说 ----

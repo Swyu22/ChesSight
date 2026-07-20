@@ -209,7 +209,7 @@ body {
 .cards {
   display: flex;
   gap: 20px;
-  align-items: stretch; /* 菜单卡与解说卡自动等高 */
+  align-items: flex-start; /* 菜单卡不被解说内容撑高；解说卡高度由 JS 镜像菜单卡 */
 }
 .menu-panel {
   width: 300px;
@@ -517,8 +517,9 @@ footer a { color: var(--text-dim); }
   .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; }
   .side { width: var(--board-size); }
   .cards { flex-direction: column; }
-  .menu-panel, .panel-side, .legend-card { width: 100%; max-height: none; overflow: visible; }
-  .panel-side { height: 320px; } /* 堆叠时给解说卡片固定高度 */
+  .menu-panel, .legend-card { width: 100%; max-height: none; overflow: visible; }
+  /* 解说卡片固定高度、解说窗内滚动；!important 覆盖桌面 JS 设的内联高度 */
+  .panel-side { width: 100%; height: 320px !important; overflow: hidden; }
   .legend-item { flex-basis: calc(50% - 10px); } /* 窄屏两列 */
   .brand {
     position: static;
