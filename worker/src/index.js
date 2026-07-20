@@ -8,10 +8,11 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const SYSTEM_PROMPT =
-  '你是一位国际象棋解说员，用中文解说，风格清晰而富有诗意。' +
-  '针对给出的最新一步棋，点出它的意图、制造的威胁或与前着的呼应。' +
-  '严格限制在两句话以内（不超过60字为佳）。' +
-  '直接输出解说正文：不要复述着法记号、不要编号、不要引号、不要提及你是AI或解说员。';
+  '你是一位精通七言律诗的国际象棋解说员。' +
+  '针对给出的最新一步棋，即兴创作原创的七言两句（每句七字、共十四字），' +
+  '两句对仗工整、意象凝练，点出这步棋的意图、气势或攻守呼应。' +
+  '只输出这两句诗，两句之间用一个逗号分隔（形如"前七字，后七字"）；' +
+  '不要标题、不要编号、不要引号、不要解释、不要着法记号、不要提及你是AI。';
 
 // 每个 isolate 内的轻量限流（尽力而为）：每 IP 每分钟最多 30 次
 const hits = new Map();
@@ -67,8 +68,8 @@ export default {
 
     const sideJustMoved = moves.length % 2 === 1 ? '白方' : '黑方';
     const userPrompt = opening
-      ? `棋盘刚按开局库摆出「${opening}」（着法：${fmtMoves(moves)}）。请用不超过两句话整体解说这个开局的核心意图与棋风气质。`
-      : `当前棋谱：${fmtMoves(moves)}\n当前局面 FEN：${fen}\n${sideJustMoved}刚走了最新一步：${lastMove}。请解说这一步。`;
+      ? `棋盘刚按开局库摆出「${opening}」（着法：${fmtMoves(moves)}）。请为这个开局的气质创作七言两句（共十四字，一逗分隔）。`
+      : `当前棋谱：${fmtMoves(moves)}\n当前局面 FEN：${fen}\n${sideJustMoved}刚走了最新一步：${lastMove}。请为这一步创作七言两句（共十四字，一逗分隔）。`;
 
     const upstream = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -79,8 +80,10 @@ export default {
       body: JSON.stringify({
         model: 'deepseek-v4-flash',
         stream: true,
-        max_tokens: 150,
-        temperature: 1.1,
+        // v4-flash 为思考型模型：先输出 reasoning_content 再出正文，需给足预算否则正文为空。
+        // 正文只有七言两句（约十四字），但要留出前置推理的 token。
+        max_tokens: 400,
+        temperature: 1.15,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },

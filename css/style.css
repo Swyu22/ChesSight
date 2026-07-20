@@ -196,27 +196,16 @@ body {
   flex-direction: column;
   gap: 14px;
 }
-/* 右侧栏：解说卡片（与菜单卡等大，固定于顶部）+ 图例/署名区（下方，余量内滚动） */
-.side-col {
+/* 右侧栏：解说 + 图例 + 署名同处一张卡片，与菜单卡等宽等高、上下沿对齐（高度 JS 镜像菜单卡）。
+   卡内自上而下：标题 → 解说窗（固定较短、内滚动）→ 图例/署名区（填满余量、内滚动）。 */
+.panel-side {
   width: 300px;
-  height: var(--board-size);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  overflow: hidden; /* 卡片本身不滚动，内部两个区各自滚动 */
 }
-/* 解说卡片：与菜单卡同宽同高（高度由 JS 镜像菜单卡），内部解说窗撑满并滚动 */
-.panel-cmt {
-  flex: 0 0 auto;
-  overflow: hidden;
-}
-/* 图例 + 署名：填满解说卡片下方余量，内容过多时本区内滚动（不动解说卡片） */
 .ref-block {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  background: var(--panel);
-  border-radius: 10px;
-  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -466,8 +455,8 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .cmt-head { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; }
 .cmt-head h2 { font-size: 13px; font-weight: 700; }
 .cmt-list {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  height: 178px; /* 固定较短（约为原来的三分之一），条目累积时窗内向上滚动，卡片不长高 */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -516,9 +505,8 @@ footer a { color: var(--text-dim); }
   :root { --board-size: min(94vw, 70vh); }
   .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; }
   .panel { width: var(--board-size); max-height: none; overflow: visible; }
-  .side-col { width: var(--board-size); height: auto; }
+  .panel-side { width: var(--board-size); height: auto !important; overflow: visible; }
   .ref-block { overflow: visible; }
-  .panel-cmt { height: 320px !important; } /* 堆叠时给解说卡片固定高度 */
   .brand {
     position: static;
     width: fit-content;

@@ -63,6 +63,15 @@ const openingCons = $id('opening-cons');
 const boardEl = $id('board');
 const board = createBoard(boardEl);
 
+// 解说/图例卡片与菜单卡片等高、上下沿对齐（桌面）：镜像菜单卡片高度，卡内解说窗固定较短、
+// 图例区在余量内滚动。每次 renderAll 结束都会调用，覆盖提示出现/开局简介展开等高度变化。
+const menuPanelEl = document.querySelector('.panel:not(.panel-side)');
+const cmtPanelEl = document.querySelector('.panel-side');
+function syncCmtHeight() {
+  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
+  else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
+}
+
 for (const op of OPENINGS) {
   const o = document.createElement('option');
   o.value = op.id;
@@ -216,6 +225,7 @@ function renderAll() {
   btnRedo.disabled = setupMode || !history.canRedo();
   btnHint.disabled = setupMode || thinking || isLocked();
   openingSelect.disabled = setupMode;
+  syncCmtHeight(); // 菜单卡高度可能因提示/开局简介变化，解说卡片随之保持等高
 }
 
 // ---- AI 实时解说 ----
@@ -835,17 +845,8 @@ window.app = {
   },
 };
 
-// 解说卡片与菜单卡片等高（含开局简介展开等内容变化）；窄屏由 CSS 固定高度接管
-const menuPanelEl = document.querySelector('.panel:not(.panel-cmt)');
-const cmtPanelEl = document.querySelector('.panel-cmt');
-function syncCmtHeight() {
-  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
-  else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
-}
 if (window.ResizeObserver) new ResizeObserver(syncCmtHeight).observe(menuPanelEl);
 window.addEventListener('resize', syncCmtHeight);
-syncCmtHeight();
 
 renderAll();
-syncCmtHeight();
 if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面
