@@ -34,7 +34,8 @@ const openingOrigin = document.getElementById('opening-origin');
 const openingPros = document.getElementById('opening-pros');
 const openingCons = document.getElementById('opening-cons');
 
-const board = createBoard(document.getElementById('board'), onSquareClick);
+const boardEl = document.getElementById('board');
+const board = createBoard(boardEl);
 
 for (const op of OPENINGS) {
   const o = document.createElement('option');
@@ -80,23 +81,80 @@ function isLocked() {
   return chess.isCheckmate() || chess.isStalemate();
 }
 
-function onSquareClick(sq) {
-  if (isLocked()) return; // 终局锁盘（派生状态，撤销后自动解锁）
+// ---- 走子交互：点击 + 拖拽（Chess.com 式），统一用 Pointer Events ----
+// 按下己方子 → 立即选中并可拖拽；位移超过阈值进入拖拽（浮动棋子跟随指针、
+// origin 半透明、悬停格白框）；松手落在合法格即走子，否则弹回并保持选中。
+// 未发生位移即普通点击：再点已选中的子取消选中，点合法落点走子，点其他处取消。
+let drag = null; // { from, wasSelected, moved, ghost, over, pointerId, startX, startY, src }
+
+boardEl.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const sqEl = e.target.closest('[data-square]');
+  if (!sqEl || isLocked()) return;
+  const sq = sqEl.dataset.square;
   const piece = chess.get(sq);
-  if (selected) {
-    if (sq === selected) {
-      clearSelection();
-    } else if (!tryMove(sq)) {
-      if (piece && piece.color === chess.turn()) select(sq);
-      else clearSelection();
-    }
-  } else if (piece && piece.color === chess.turn()) {
+  if (piece && piece.color === chess.turn()) {
+    const wasSelected = selected === sq;
     select(sq);
-  } else {
-    return; // 未选中时点空格/敌子：无操作
+    renderAll();
+    drag = {
+      from: sq, wasSelected, moved: false, ghost: null, over: null,
+      pointerId: e.pointerId, startX: e.clientX, startY: e.clientY,
+      src: `./assets/pieces/${piece.color}${piece.type.toUpperCase()}.svg`,
+    };
+    try { boardEl.setPointerCapture(e.pointerId); } catch { /* 合成事件等无效 pointerId 时忽略 */ }
+  } else if (selected) {
+    if (!tryMove(sq)) clearSelection();
+    renderAll();
   }
-  renderAll();
+});
+
+boardEl.addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 4) return;
+    drag.moved = true;
+    const ghost = document.createElement('img');
+    ghost.src = drag.src;
+    ghost.className = 'drag-ghost';
+    const size = boardEl.clientWidth / 8;
+    ghost.style.width = size + 'px';
+    ghost.style.height = size + 'px';
+    document.body.appendChild(ghost);
+    drag.ghost = ghost;
+    boardEl.querySelector(`[data-square="${drag.from}"]`).classList.add('drag-origin');
+  }
+  drag.ghost.style.left = e.clientX + 'px';
+  drag.ghost.style.top = e.clientY + 'px';
+  const over = board.squareAt(e.clientX, e.clientY);
+  if (drag.over !== over) {
+    if (drag.over) boardEl.querySelector(`[data-square="${drag.over}"]`).classList.remove('drag-over');
+    drag.over = over;
+    if (over) boardEl.querySelector(`[data-square="${over}"]`).classList.add('drag-over');
+  }
+});
+
+function endDrag(e, cancelled) {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const d = drag;
+  drag = null;
+  if (d.ghost) d.ghost.remove();
+  boardEl.querySelectorAll('.drag-origin, .drag-over').forEach((el) => el.classList.remove('drag-origin', 'drag-over'));
+  if (cancelled) {
+    renderAll();
+    return;
+  }
+  if (d.moved) {
+    const dest = board.squareAt(e.clientX, e.clientY);
+    if (dest && dest !== d.from) tryMove(dest); // 不合法则自然弹回，选中与落点提示保留
+    renderAll();
+  } else if (d.wasSelected) {
+    clearSelection(); // 原地点击已选中的子 → 取消选中
+    renderAll();
+  }
 }
+boardEl.addEventListener('pointerup', (e) => endDrag(e, false));
+boardEl.addEventListener('pointercancel', (e) => endDrag(e, true));
 
 function statusText() {
   if (chess.isCheckmate()) return chess.turn() === 'w' ? '将杀！黑方获胜' : '将杀！白方获胜';
@@ -205,6 +263,14 @@ btnHint.addEventListener('click', async () => {
   }
   thinking = false;
   renderAll();
+});
+
+// F1 快捷键触发引擎提示（拦截浏览器默认帮助）
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'F1') {
+    e.preventDefault();
+    if (!btnHint.disabled) btnHint.click();
+  }
 });
 
 openingSelect.addEventListener('change', () => {

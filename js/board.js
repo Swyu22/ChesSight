@@ -5,7 +5,7 @@ const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const PIECE_NAMES = { p: '兵', n: '马', b: '象', r: '车', q: '后', k: '王' };
 const SVGNS = 'http://www.w3.org/2000/svg';
 
-export function createBoard(container, onSquareClick) {
+export function createBoard(container) {
   let orientation = 'w'; // 'w' 白方视角 / 'b' 黑方视角
   const squares = new Map(); // 'e4' -> { el, img }
 
@@ -86,10 +86,16 @@ export function createBoard(container, onSquareClick) {
   }
   applyOrientation();
 
-  container.addEventListener('click', (e) => {
-    const sq = e.target.closest('[data-square]');
-    if (sq) onSquareClick(sq.dataset.square);
-  });
+  // 视口坐标 → 格名（按当前视角），拖拽落点判定用；出界返回 null
+  function squareAt(clientX, clientY) {
+    const rect = container.getBoundingClientRect();
+    const fx = Math.floor(((clientX - rect.left) / rect.width) * 8);
+    const fy = Math.floor(((clientY - rect.top) / rect.height) * 8);
+    if (fx < 0 || fx > 7 || fy < 0 || fy > 7) return null;
+    const f = orientation === 'w' ? fx : 7 - fx;
+    const r = orientation === 'w' ? 8 - fy : fy + 1;
+    return FILES[f] + r;
+  }
 
   function drawLine(g, from, to, cls, marker, shorten) {
     const [x1, y1] = center(from);
@@ -160,5 +166,5 @@ export function createBoard(container, onSquareClick) {
     }
   }
 
-  return { render, setOrientation, getOrientation: () => orientation };
+  return { render, setOrientation, getOrientation: () => orientation, squareAt };
 }

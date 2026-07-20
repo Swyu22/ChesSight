@@ -23,6 +23,7 @@
       </header>
       <div id="status" class="status" aria-live="polite">加载中…</div>
       <div id="hint" class="hint" aria-live="polite" hidden></div>
+      <button id="btn-hint" class="btn-hint-big">💡 提示最佳走法<span class="kbd">F1</span></button>
       <div class="buttons">
         <button id="btn-new" class="btn btn-primary">新对局</button>
         <button id="btn-flip" class="btn">🔄 翻转棋盘</button>
@@ -31,7 +32,6 @@
         <button id="btn-control" class="btn btn-toggle active" aria-pressed="true">攻击范围</button>
         <button id="btn-safety" class="btn btn-toggle active" aria-pressed="true">安全标记</button>
         <button id="btn-xray" class="btn btn-toggle active" aria-pressed="true">X-Ray 杀伤线</button>
-        <button id="btn-hint" class="btn">💡 提示</button>
       </div>
       <div class="openings">
         <h2>开局库</h2>
@@ -45,6 +45,8 @@
           <p><strong>缺点：</strong><span id="opening-cons"></span></p>
         </div>
       </div>
+    </aside>
+    <aside class="panel panel-side">
       <div class="legend">
         <h2>图例</h2>
         <div class="legend-item"><span class="swatch ctrl-w"></span>仅白方控制</div>
