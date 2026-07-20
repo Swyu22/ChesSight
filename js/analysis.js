@@ -49,3 +49,61 @@ export function analyze(chess) {
   cachedResult = { control, safety };
   return cachedResult;
 }
+
+// X-Ray 杀伤线：每个棋子按几何控制口径给出攻击射线（与 F1/F2 同口径）。
+// 滑子每个方向合并为一条线（终点=首个阻挡格或棋盘边缘）；马/王/兵为逐目标短线。
+const SLIDE_DIRS = {
+  r: [[1, 0], [-1, 0], [0, 1], [0, -1]],
+  b: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+};
+const KNIGHT_OFFSETS = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
+const KING_OFFSETS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+
+export function attackLines(chess) {
+  const rows = chess.board();
+  const occ = new Set();
+  const pieces = [];
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      const cell = rows[i][j];
+      if (!cell) continue;
+      const name = FILES[j] + (8 - i);
+      occ.add(name);
+      pieces.push({ name, f: j, r: 8 - i, type: cell.type, color: cell.color });
+    }
+  }
+  const sq = (f, r) => FILES[f] + r;
+  const on = (f, r) => f >= 0 && f < 8 && r >= 1 && r <= 8;
+  const lines = [];
+  for (const p of pieces) {
+    if (p.type === 'q' || p.type === 'r' || p.type === 'b') {
+      const dirs = p.type === 'q' ? [...SLIDE_DIRS.r, ...SLIDE_DIRS.b] : SLIDE_DIRS[p.type];
+      for (const [df, dr] of dirs) {
+        let f = p.f + df;
+        let r = p.r + dr;
+        let last = null;
+        while (on(f, r)) {
+          last = sq(f, r);
+          if (occ.has(last)) break; // 首个阻挡格计入后截止
+          f += df;
+          r += dr;
+        }
+        if (last) lines.push({ from: p.name, to: last, color: p.color });
+      }
+    } else if (p.type === 'n' || p.type === 'k') {
+      for (const [df, dr] of (p.type === 'n' ? KNIGHT_OFFSETS : KING_OFFSETS)) {
+        const f = p.f + df;
+        const r = p.r + dr;
+        if (on(f, r)) lines.push({ from: p.name, to: sq(f, r), color: p.color });
+      }
+    } else if (p.type === 'p') {
+      const dr = p.color === 'w' ? 1 : -1;
+      for (const df of [-1, 1]) {
+        const f = p.f + df;
+        const r = p.r + dr;
+        if (on(f, r)) lines.push({ from: p.name, to: sq(f, r), color: p.color });
+      }
+    }
+  }
+  return lines;
+}

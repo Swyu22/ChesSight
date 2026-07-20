@@ -39,6 +39,7 @@ body {
 
 /* ---------- 棋盘 ---------- */
 .board {
+  position: relative;
   width: var(--board-size);
   height: var(--board-size);
   display: grid;
@@ -148,7 +149,6 @@ body {
 .status.alert { color: #FFC94D; }
 
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-#btn-new { grid-column: 1 / -1; }
 
 .btn {
   border: none;
@@ -178,6 +178,58 @@ body {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 .btn-toggle.active:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* ---------- SVG 箭头层（X-Ray + 引擎提示） ---------- */
+svg.arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+svg.arrows line { fill: none; stroke-linecap: round; }
+.xray-w { stroke: rgba(52, 120, 246, 0.55); stroke-width: 0.045; stroke-dasharray: 0.16 0.11; }
+.xray-b { stroke: rgba(235, 64, 52, 0.55); stroke-width: 0.045; stroke-dasharray: 0.16 0.11; }
+.hint-arrow { stroke: #F7A600; stroke-width: 0.16; opacity: 0.92; }
+
+/* ---------- 引擎提示条 ---------- */
+.hint {
+  background: var(--panel-2);
+  border-left: 3px solid #F7A600;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* ---------- 开局库 ---------- */
+.openings { display: flex; flex-direction: column; gap: 8px; }
+.openings h2 { font-size: 13px; font-weight: 700; }
+.openings select {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.opening-info {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.opening-info h3 { font-size: 14px; color: var(--text); }
+.opening-info strong { color: var(--text); }
 
 /* ---------- 图例 ---------- */
 .legend { display: flex; flex-direction: column; gap: 8px; }

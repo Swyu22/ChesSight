@@ -2,7 +2,7 @@
 
 把双方的"控制格"火力版图与每个棋子的安全状态实时画在棋盘上的纯前端训练工具，帮助训练控制格意识、子力安全意识与复盘习惯。
 
-**在线使用：<https://swyu22.github.io/ChesSight/>**
+**在线使用：<https://chessight.art>**（备用地址 <https://swyu22.github.io/ChesSight/>）
 
 ## 功能
 
@@ -11,7 +11,11 @@
   - 口径为**几何控制**：兵只算斜吃方向（不含直进格）、滑子止于首个阻挡格且含该格、被牵制的子照常计入、含对己方子的保护
 - **子力安全标记**（红 > 绿 > 黄优先级）：红框 = 被攻击、绿框 = 未被攻击且有保护、黄框 = 未被攻击且无保护（潜在弱点）；王只在被将军时标红
 - **回放训练**：上一步 / 下一步（回退中走新着法则截断重做栈），每步后可视化全量重算
-- 两个可视化总开关，默认全开；全关即退化为普通对弈盘
+- **X-Ray 杀伤线**：每个棋子的攻击射线以虚线箭头持续显示（蓝 = 白方、红 = 黑方），与覆盖层同口径
+- **引擎提示**：内置 Stockfish 18（lite NNUE，单线程 WASM，本地加载），💡提示按钮给出当前局面最佳走法（文字 + 橙色箭头）
+- **棋盘翻转**：一键切换白方 / 黑方视角，坐标与箭头同步翻转
+- **知名开局库**：14 个经典开局一键摆盘（走子记入历史可回放），附每个开局的历史由来与优缺点简介
+- 可视化总开关默认全开；全关即退化为普通对弈盘
 
 ## 训练场景
 
@@ -36,4 +40,5 @@ python3 -m http.server 8000
 
 - 棋子图形：**cburnett** 棋子集，作者 Colin M.L. Burnett（Cburnett），[CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)，来自 [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
 - 规则引擎：[chess.js](https://github.com/jhlywa/chess.js) v1.4.0（BSD-2-Clause），vendor 于 `js/vendor/chess.js`（许可证声明含于文件内），完全离线可用
+- 分析引擎：[Stockfish.js](https://github.com/nmrugg/stockfish.js) 18（GPLv3，基于 [Stockfish](https://github.com/official-stockfish/Stockfish)），vendor 单线程 lite 构建于 `js/vendor/stockfish-18-lite-single.{js,wasm}`，许可证声明含于 JS 文件头，源码见上述仓库
 - 本项目代码：MIT

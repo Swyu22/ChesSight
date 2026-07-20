@@ -21,12 +21,28 @@
         <p class="tagline">国际象棋攻防可视化训练器</p>
       </header>
       <div id="status" class="status" aria-live="polite">加载中…</div>
+      <div id="hint" class="hint" aria-live="polite" hidden></div>
       <div class="buttons">
         <button id="btn-new" class="btn btn-primary">新对局</button>
+        <button id="btn-flip" class="btn">🔄 翻转棋盘</button>
         <button id="btn-undo" class="btn" disabled>上一步</button>
         <button id="btn-redo" class="btn" disabled>下一步</button>
         <button id="btn-control" class="btn btn-toggle active" aria-pressed="true">攻击范围</button>
         <button id="btn-safety" class="btn btn-toggle active" aria-pressed="true">安全标记</button>
+        <button id="btn-xray" class="btn btn-toggle active" aria-pressed="true">X-Ray 杀伤线</button>
+        <button id="btn-hint" class="btn">💡 提示</button>
+      </div>
+      <div class="openings">
+        <h2>开局库</h2>
+        <select id="opening-select" aria-label="选择开局">
+          <option value="">— 选择开局自动摆盘 —</option>
+        </select>
+        <div id="opening-info" class="opening-info" hidden>
+          <h3 id="opening-name"></h3>
+          <p id="opening-origin"></p>
+          <p><strong>优点：</strong><span id="opening-pros"></span></p>
+          <p><strong>缺点：</strong><span id="opening-cons"></span></p>
+        </div>
       </div>
       <div class="legend">
         <h2>图例</h2>
@@ -37,10 +53,12 @@
         <div class="legend-item"><span class="swatch safe-green"></span>未被攻击 · 有保护</div>
         <div class="legend-item"><span class="swatch safe-yellow"></span>未被攻击 · 无保护（潜在弱点）</div>
         <p class="note">注：兵只控制左右斜前方两格，<strong>直进格不算攻击</strong>。口径为几何控制——被牵制的子照常计入，贴着敌王的子也计为受王攻击。</p>
+        <p class="note">X-Ray 虚线箭头 = 各棋子的杀伤路线（蓝 = 白方、红 = 黑方）；橙色粗箭头 = 引擎提示的最佳走法。</p>
       </div>
       <footer>
         棋子素材：<a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces" target="_blank" rel="noopener">cburnett</a>（Colin M.L. Burnett）· CC-BY-SA 3.0 · Wikimedia Commons<br>
-        规则引擎：<a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a> · BSD-2-Clause
+        规则引擎：<a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a> · BSD-2-Clause<br>
+        分析引擎：<a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">Stockfish.js 18</a> · GPLv3
       </footer>
     </aside>
   </div>
