@@ -14,16 +14,32 @@
   <link rel="apple-touch-icon" href="./assets/icon-180.png">
 </head>
 <body>
+  <a class="brand" href="./">
+    <img src="./assets/icon.svg" alt="ChesSight 图标">
+    <span>Ches<span class="accent">Sight</span></span>
+  </a>
   <div class="app">
+    <aside id="tray" class="tray" hidden>
+      <div class="tray-head">备选棋子</div>
+      <div id="tray-pieces" class="tray-pieces"></div>
+      <div class="tray-controls">
+        <label class="turn-pick">轮到
+          <select id="setup-turn">
+            <option value="w">白方</option>
+            <option value="b">黑方</option>
+          </select>
+        </label>
+        <button id="btn-clear" class="btn btn-mini">清空棋盘</button>
+        <button id="btn-start-pos" class="btn btn-mini">初始局面</button>
+        <button id="btn-done" class="btn btn-mini btn-primary">完成</button>
+      </div>
+    </aside>
     <div id="board" class="board" aria-label="棋盘"></div>
     <aside class="panel">
-      <header class="panel-head">
-        <h1>Ches<span class="accent">Sight</span></h1>
-        <p class="tagline">国际象棋攻防可视化训练器</p>
-      </header>
       <div id="status" class="status" aria-live="polite">加载中…</div>
       <div id="hint" class="hint" aria-live="polite" hidden></div>
       <button id="btn-hint" class="btn-hint-big">💡 提示最佳走法<span class="kbd">F1</span></button>
+      <label class="auto-hint"><input type="checkbox" id="chk-auto">持续提示（每步走完自动分析）</label>
       <div class="buttons">
         <button id="btn-new" class="btn btn-primary">新对局</button>
         <button id="btn-flip" class="btn">🔄 翻转棋盘</button>
@@ -32,6 +48,8 @@
         <button id="btn-control" class="btn btn-toggle active" aria-pressed="true">攻击范围</button>
         <button id="btn-safety" class="btn btn-toggle active" aria-pressed="true">安全标记</button>
         <button id="btn-xray" class="btn btn-toggle active" aria-pressed="true">X-Ray 杀伤线</button>
+        <button id="btn-sound" class="btn btn-toggle active" aria-pressed="true">🔊 音效</button>
+        <button id="btn-setup" class="btn">♟ 自由摆棋</button>
       </div>
       <div class="openings">
         <h2>开局库</h2>

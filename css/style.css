@@ -16,7 +16,9 @@
   --safe-red: #E02828;
   --safe-green: #2FB344;
   --safe-yellow: #E8A800;
-  --board-size: min(90vw, 78vh);
+  /* 智能自适应：宽度充足时撑满上下沿（100vh - 上下留白），
+     否则按剩余宽度收缩（650px = 两列面板 + 间距 + 页边距），永不出现滚动 */
+  --board-size: min(calc(100vh - 24px), calc(100vw - 650px));
   --sq: calc(var(--board-size) / 8);
 }
 
@@ -32,12 +34,38 @@ body {
 
 .app {
   display: flex;
-  flex-wrap: wrap; /* 宽度不足时图例栏自动换行，不撑出横向滚动 */
-  gap: 24px;
+  gap: 20px;
   justify-content: center;
-  align-items: flex-start;
-  padding: 24px 20px;
+  align-items: center; /* 两列面板对齐浏览器横轴中线 */
+  min-height: 100vh;
+  padding: 12px 16px;
+  --sq: calc(var(--board-size) / 8); /* 在 .app 作用域重算，摆棋模式覆盖 --board-size 时同步生效 */
 }
+/* 摆棋模式：左侧备选框占位，棋盘相应收缩 */
+.app.setup { --board-size: min(calc(100vh - 24px), calc(100vw - 786px)); }
+
+/* 左上角品牌标 */
+.brand {
+  position: fixed;
+  top: 12px;
+  left: 14px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.3px;
+  background: rgba(38, 36, 33, 0.88); /* 悬浮药丸底衬：棋盘满高时叠在盘角也清晰可读 */
+  backdrop-filter: blur(4px);
+  padding: 7px 14px 7px 9px;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.brand img { width: 30px; height: 30px; display: block; }
+.brand .accent { color: var(--accent); }
 
 /* ---------- 棋盘 ---------- */
 .board {
@@ -139,6 +167,8 @@ body {
 /* ---------- 控制面板 ---------- */
 .panel {
   width: 300px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   background: var(--panel);
   border-radius: 10px;
   padding: 18px;
@@ -148,9 +178,65 @@ body {
 }
 .panel-side { width: 272px; }
 
-.panel h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
-.panel h1 .accent { color: var(--accent); }
-.tagline { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+/* ---------- 摆棋备选框 ---------- */
+.tray {
+  width: 116px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tray-head { font-size: 12px; font-weight: 700; color: var(--text-dim); text-align: center; }
+.tray-pieces {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(6, auto);
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.tray-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--panel-2);
+  cursor: grab;
+}
+.tray-slot img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.tray-slot.zero { opacity: 0.45; } /* 无限调色板：计数 0 时半透明但仍可取用 */
+.tray-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+.tray-slot.zero .tray-badge { display: none; }
+.tray-controls { display: flex; flex-direction: column; gap: 6px; }
+.turn-pick { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.turn-pick select {
+  flex: 1;
+  background: var(--panel-2);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 12px;
+}
+.btn-mini { padding: 7px 8px; font-size: 12px; border-radius: 6px; }
 
 .status {
   background: var(--panel-2);
@@ -193,8 +279,20 @@ body {
   font-weight: 700;
 }
 
+/* 持续提示勾选 */
+.auto-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  margin-top: -6px;
+}
+.auto-hint input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-#btn-xray { grid-column: 1 / -1; }
+#btn-setup { grid-column: 1 / -1; }
 
 .btn {
   border: none;
@@ -307,9 +405,12 @@ footer {
 }
 footer a { color: var(--text-dim); }
 
-/* ---------- 移动端：上棋盘、下面板 ---------- */
-@media (max-width: 900px) {
+/* ---------- 窄屏 / 移动端：上棋盘、下面板 ---------- */
+@media (max-width: 1024px) {
   :root { --board-size: min(94vw, 70vh); }
-  .app { flex-direction: column; align-items: center; padding: 16px 12px; }
-  .panel, .panel-side { width: var(--board-size); }
+  .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 52px 12px 16px; min-height: auto; }
+  .panel, .panel-side { width: var(--board-size); max-height: none; overflow: visible; }
+  .brand { position: absolute; }
+  .tray { width: var(--board-size); }
+  .tray-pieces { grid-auto-flow: row; grid-template-rows: auto auto; grid-template-columns: repeat(6, 1fr); }
 }
