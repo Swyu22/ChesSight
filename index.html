@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChesSight · 国际象棋攻防可视化训练器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 字体非阻塞加载：加载失败或缓慢时直接使用 system-ui 兜底，不阻塞首屏 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="icon" href="./assets/pieces/wN.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="app">
+    <div id="board" class="board" aria-label="棋盘"></div>
+    <aside class="panel">
+      <header class="panel-head">
+        <h1>Ches<span class="accent">Sight</span></h1>
+        <p class="tagline">国际象棋攻防可视化训练器</p>
+      </header>
+      <div id="status" class="status" aria-live="polite">加载中…</div>
+      <div class="buttons">
+        <button id="btn-new" class="btn btn-primary">新对局</button>
+        <button id="btn-undo" class="btn" disabled>上一步</button>
+        <button id="btn-redo" class="btn" disabled>下一步</button>
+        <button id="btn-control" class="btn btn-toggle active" aria-pressed="true">攻击范围</button>
+        <button id="btn-safety" class="btn btn-toggle active" aria-pressed="true">安全标记</button>
+      </div>
+      <div class="legend">
+        <h2>图例</h2>
+        <div class="legend-item"><span class="swatch ctrl-w"></span>仅白方控制</div>
+        <div class="legend-item"><span class="swatch ctrl-b"></span>仅黑方控制</div>
+        <div class="legend-item"><span class="swatch ctrl-both"></span>双方均控制</div>
+        <div class="legend-item"><span class="swatch safe-red"></span>被攻击（无论有无保护）</div>
+        <div class="legend-item"><span class="swatch safe-green"></span>未被攻击 · 有保护</div>
+        <div class="legend-item"><span class="swatch safe-yellow"></span>未被攻击 · 无保护（潜在弱点）</div>
+        <p class="note">注：兵只控制左右斜前方两格，<strong>直进格不算攻击</strong>。口径为几何控制——被牵制的子照常计入，贴着敌王的子也计为受王攻击。</p>
+      </div>
+      <footer>
+        棋子素材：<a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces" target="_blank" rel="noopener">cburnett</a>（Colin M.L. Burnett）· CC-BY-SA 3.0 · Wikimedia Commons<br>
+        规则引擎：<a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a> · BSD-2-Clause
+      </footer>
+    </aside>
+  </div>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

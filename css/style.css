@@ -1,0 +1,217 @@
+/* ChesSight — Chess.com 风格深色主题 */
+:root {
+  --bg: #302E2B;
+  --panel: #262421;
+  --panel-2: #3C3936;
+  --accent: #81B64C;
+  --accent-hover: #8FC45F;
+  --text: #FFFFFF;
+  --text-dim: #989795;
+  --sq-light: #EBECD0;
+  --sq-dark: #739552;
+  --hl-last: rgba(255, 255, 51, 0.5);
+  --ctrl-w: rgba(52, 120, 246, 0.42);
+  --ctrl-b: rgba(235, 64, 52, 0.42);
+  --ctrl-both: rgba(150, 60, 220, 0.52);
+  --safe-red: #E02828;
+  --safe-green: #2FB344;
+  --safe-yellow: #E8A800;
+  --board-size: min(90vw, 78vh);
+  --sq: calc(var(--board-size) / 8);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh;
+}
+
+.app {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 28px 20px;
+}
+
+/* ---------- 棋盘 ---------- */
+.board {
+  width: var(--board-size);
+  height: var(--board-size);
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.square { position: relative; cursor: pointer; }
+.square.light { background: var(--sq-light); }
+.square.dark  { background: var(--sq-dark); }
+
+/* 层叠顺序 = DOM 顺序：底色 → 最后一步 → 攻击覆盖 → 落点提示 → 棋子 → 安全框 → 选中描边 */
+.square .ly { position: absolute; inset: 0; pointer-events: none; display: none; }
+
+.square.last .ly.last,
+.square.sel  .ly.last { display: block; background: var(--hl-last); }
+
+.square.ctrl-w  .ly.ctrl { display: block; background: var(--ctrl-w); }
+.square.ctrl-b  .ly.ctrl { display: block; background: var(--ctrl-b); }
+.square.ctrl-wb .ly.ctrl { display: block; background: var(--ctrl-both); }
+
+.square.hint-dot  .ly.hint,
+.square.hint-ring .ly.hint { display: block; }
+.square.hint-dot .ly.hint::before {
+  content: '';
+  position: absolute;
+  inset: 34%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.18);
+}
+.square.hint-ring .ly.hint::before {
+  content: '';
+  position: absolute;
+  inset: 3%;
+  border-radius: 50%;
+  border: calc(var(--sq) * 0.09) solid rgba(0, 0, 0, 0.18);
+}
+
+.piece {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  pointer-events: none;
+}
+.piece.show { display: block; }
+
+.square.safety-attacked   .ly.safety,
+.square.safety-defended   .ly.safety,
+.square.safety-undefended .ly.safety { display: block; border-radius: 4px; }
+.square.safety-attacked   .ly.safety { border: 3px solid var(--safe-red); }
+.square.safety-defended   .ly.safety { border: 3px solid var(--safe-green); }
+.square.safety-undefended .ly.safety { border: 3px solid var(--safe-yellow); }
+
+/* 选中描边内缩，避免遮盖最外圈 3px 的安全状态框 */
+.square.sel .ly.sel {
+  display: block;
+  inset: 4px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 calc(var(--sq) * 0.045) rgba(255, 255, 102, 0.9);
+}
+
+.coord {
+  position: absolute;
+  font-size: calc(var(--sq) * 0.24);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.coord.rank { top: 4%; left: 5%; }
+.coord.file { bottom: 4%; right: 6%; }
+.square.light .coord { color: var(--sq-dark); }
+.square.dark  .coord { color: var(--sq-light); }
+
+/* ---------- 控制面板 ---------- */
+.panel {
+  width: 320px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
+.panel h1 .accent { color: var(--accent); }
+.tagline { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+.status {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.status.alert { color: #FFC94D; }
+
+.buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#btn-new { grid-column: 1 / -1; }
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 10px;
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+}
+.btn:hover:not(:disabled) { background: #4A4642; }
+.btn:disabled { opacity: 0.35; cursor: default; }
+
+.btn-primary {
+  background: var(--accent);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-toggle.active {
+  background: var(--accent);
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+.btn-toggle.active:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* ---------- 图例 ---------- */
+.legend { display: flex; flex-direction: column; gap: 8px; }
+.legend h2 { font-size: 13px; font-weight: 700; color: var(--text); }
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.swatch { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; }
+/* 覆盖色画在深绿格底上，模拟实际叠加效果 */
+.swatch.ctrl-w    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-w), var(--ctrl-w)); }
+.swatch.ctrl-b    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-b), var(--ctrl-b)); }
+.swatch.ctrl-both { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-both), var(--ctrl-both)); }
+.swatch.safe-red    { background: var(--sq-light); border: 3px solid var(--safe-red); }
+.swatch.safe-green  { background: var(--sq-light); border: 3px solid var(--safe-green); }
+.swatch.safe-yellow { background: var(--sq-light); border: 3px solid var(--safe-yellow); }
+.legend .note { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+.legend .note strong { color: var(--text); }
+
+footer {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  border-top: 1px solid #3A3733;
+  padding-top: 12px;
+}
+footer a { color: var(--text-dim); }
+
+/* ---------- 移动端：上棋盘、下面板 ---------- */
+@media (max-width: 900px) {
+  :root { --board-size: min(94vw, 70vh); }
+  .app { flex-direction: column; align-items: center; padding: 16px 12px; }
+  .panel { width: var(--board-size); }
+}
