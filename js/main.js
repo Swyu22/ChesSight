@@ -71,6 +71,13 @@ function syncCmtHeight() {
   if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
   else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
 }
+// rAF 去抖：读高度前先让浏览器完成回流（解决窗口缩放 / 提示换行等回流后再读的时序问题）
+let syncScheduled = false;
+function scheduleSync() {
+  if (syncScheduled) return;
+  syncScheduled = true;
+  requestAnimationFrame(() => { syncScheduled = false; syncCmtHeight(); });
+}
 
 for (const op of OPENINGS) {
   const o = document.createElement('option');
@@ -225,7 +232,8 @@ function renderAll() {
   btnRedo.disabled = setupMode || !history.canRedo();
   btnHint.disabled = setupMode || thinking || isLocked();
   openingSelect.disabled = setupMode;
-  syncCmtHeight(); // 菜单卡高度可能因提示/开局简介变化，解说卡片随之保持等高
+  syncCmtHeight();  // 立即同步（同步的 DOM 改动已生效）
+  scheduleSync();   // 再于下一帧回流后补一次（提示换行等异步高度变化）
 }
 
 // ---- AI 实时解说 ----
@@ -845,8 +853,8 @@ window.app = {
   },
 };
 
-if (window.ResizeObserver) new ResizeObserver(syncCmtHeight).observe(menuPanelEl);
-window.addEventListener('resize', syncCmtHeight);
+if (window.ResizeObserver) new ResizeObserver(scheduleSync).observe(menuPanelEl);
+window.addEventListener('resize', scheduleSync);
 
 renderAll();
 if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面
