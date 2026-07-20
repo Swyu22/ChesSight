@@ -101,20 +101,16 @@ body {
 
 .square.hint-dot  .ly.hint,
 .square.hint-ring .ly.hint { display: block; }
-.square.hint-dot .ly.hint::before {
+/* 落点提示统一为中心小圆点（不再用环形/灰色填充）；吃子格的圆点抬到棋子之上保持可见 */
+.square.hint-dot .ly.hint::before,
+.square.hint-ring .ly.hint::before {
   content: '';
   position: absolute;
   inset: 34%;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.18);
 }
-.square.hint-ring .ly.hint::before {
-  content: '';
-  position: absolute;
-  inset: 3%;
-  border-radius: 50%;
-  border: calc(var(--sq) * 0.09) solid rgba(0, 0, 0, 0.18);
-}
+.square.hint-ring .ly.hint { z-index: 1; }
 
 .piece {
   position: absolute;
@@ -134,6 +130,30 @@ body {
 .square.safety-undefended .ly.safety { border: 3px solid var(--safe-yellow); }
 
 /* 选中描边内缩，避免遮盖最外圈 3px 的安全状态框 */
+/* ---------- 终局徽章（Chess.com 式叠加图层） ---------- */
+.square.badge-mate .ly.badge,
+.square.badge-win .ly.badge,
+.square.badge-draw .ly.badge { display: block; z-index: 2; }
+.square.badge-mate .ly.badge { background: rgba(224, 40, 40, 0.42); } /* 被将杀的王：整格红罩层 */
+.ly.badge::after {
+  position: absolute;
+  top: 3%;
+  right: 3%;
+  width: 36%;
+  height: 36%;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  font-size: calc(var(--sq) * 0.24);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.square.badge-mate .ly.badge::after { content: '#'; background: #E02828; }
+.square.badge-win .ly.badge::after { content: '♔'; background: var(--accent); font-size: calc(var(--sq) * 0.28); font-weight: 400; }
+.square.badge-draw .ly.badge::after { content: '='; background: #8B8987; }
+
 .square.sel .ly.sel {
   display: block;
   inset: 4px;
@@ -335,6 +355,36 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .xray-w { stroke: rgba(52, 120, 246, 0.55); stroke-width: 0.045; stroke-dasharray: 0.16 0.11; }
 .xray-b { stroke: rgba(235, 64, 52, 0.55); stroke-width: 0.045; stroke-dasharray: 0.16 0.11; }
 .hint-arrow { stroke: #F7A600; stroke-width: 0.16; opacity: 0.92; }
+
+/* ---------- 升变选子弹窗 ---------- */
+.promo-picker {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: #F8F8F6;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.promo-picker button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  aspect-ratio: 1;
+  width: 100%;
+}
+.promo-picker button:hover { background: #DDDDD8; }
+.promo-picker button img { width: 100%; height: 100%; display: block; }
+.promo-picker .promo-cancel {
+  aspect-ratio: auto;
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #666;
+  background: #E8E8E5;
+}
 
 /* ---------- 引擎提示条 ---------- */
 .hint {

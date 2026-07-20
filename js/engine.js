@@ -24,8 +24,9 @@ export function createEngine(workerUrl) {
     return ready;
   }
 
-  // 返回 UCI 着法字符串（如 'e2e4'、'a7a8q'），无着法时返回 '(none)'
-  async function bestMove(fen, movetime = 1200) {
+  // 返回 UCI 着法字符串（如 'e2e4'、'a7a8q'），无着法时返回 '(none)'。
+  // searchmoves：限定搜索的着法列表（LAN 格式），用于防重复等过滤
+  async function bestMove(fen, movetime = 1200, searchmoves = null) {
     await init();
     return new Promise((resolve) => {
       const onMsg = (e) => {
@@ -38,7 +39,8 @@ export function createEngine(workerUrl) {
       };
       worker.addEventListener('message', onMsg);
       worker.postMessage('position fen ' + fen);
-      worker.postMessage('go movetime ' + movetime);
+      const restrict = searchmoves && searchmoves.length ? ' searchmoves ' + searchmoves.join(' ') : '';
+      worker.postMessage('go movetime ' + movetime + restrict);
     });
   }
 

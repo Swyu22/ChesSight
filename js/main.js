@@ -17,7 +17,7 @@ let showSafety = true;
 let showXray = true;
 let hint = null; // { from, to, san }：引擎提示的最佳走法
 let thinking = false;
-let autoHint = false; // 持续提示：每次局面变化后自动分析
+let autoHint = true; // 持续提示：每次局面变化后自动分析（默认开启）
 
 // 自由摆棋模式
 let setupMode = false;
@@ -111,12 +111,19 @@ function playMoveSound(mv) {
   else sound.move();
 }
 
+// 返回 'moved'（已走子）| 'promo'（已弹出升变选子框）| false（非法落点）
 function tryMove(to) {
   const legal = legalMoves.find((m) => m.to === to);
   if (!legal) return false;
+  if (legal.promotion) {
+    pendingPromotion = { from: selected, to };
+    clearSelection();
+    showPromoPicker(to, chess.turn());
+    return 'promo';
+  }
   let made;
   try {
-    made = chess.move({ from: selected, to, promotion: 'q' }); // v1 升变默认后
+    made = chess.move({ from: selected, to });
   } catch {
     return false; // 已用合法着法预校验，正常不会到这里
   }
@@ -124,7 +131,7 @@ function tryMove(to) {
   clearSelection();
   clearHint();
   playMoveSound(made);
-  return true;
+  return 'moved';
 }
 
 function statusText() {
@@ -148,6 +155,7 @@ function renderAll() {
       selected: null,
       xrayLines: showXray ? attackLinesForBoard(setupBoard) : null,
       hintMove: null,
+      endBadges: null,
     });
     statusEl.textContent = '自由摆棋中 — 拖动摆放棋子，完成后点「完成」';
     statusEl.classList.remove('alert');
@@ -159,6 +167,27 @@ function renderAll() {
   } else {
     const { control, safety } = analyze(chess);
     const cur = history.current();
+    // 终局徽章（Chess.com 式）：将杀 = 败方王红罩+#、胜方王绿冠；逼和 = 双王灰 =
+    let endBadges = null;
+    if (chess.isCheckmate() || chess.isStalemate()) {
+      const kings = {};
+      const rows = chess.board();
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const c = rows[i][j];
+          if (c && c.type === 'k') kings[c.color] = FILES[j] + (8 - i);
+        }
+      }
+      endBadges = chess.isCheckmate()
+        ? [
+            { square: kings[chess.turn()], kind: 'mate' },
+            { square: kings[chess.turn() === 'w' ? 'b' : 'w'], kind: 'win' },
+          ]
+        : [
+            { square: kings.w, kind: 'draw' },
+            { square: kings.b, kind: 'draw' },
+          ];
+    }
     board.render({
       position: chess.board(),
       lastMove: cur.from ? [cur.from, cur.to] : null,
@@ -168,6 +197,7 @@ function renderAll() {
       selected,
       xrayLines: showXray ? attackLines(chess) : null,
       hintMove: hint,
+      endBadges,
     });
     statusEl.textContent = statusText();
     statusEl.classList.toggle('alert', chess.inCheck() || isLocked());
@@ -179,7 +209,90 @@ function renderAll() {
   openingSelect.disabled = setupMode;
 }
 
+// ---- 升变选子（后/马/象/车，Chess.com 式弹窗） ----
+let pendingPromotion = null; // { from, to }
+let promoEl = null;
+
+function showPromoPicker(to, color) {
+  removePromoPicker();
+  const sqEl = boardEl.querySelector(`[data-square="${to}"]`);
+  const picker = document.createElement('div');
+  picker.className = 'promo-picker';
+  picker.style.left = sqEl.offsetLeft + 'px';
+  picker.style.width = sqEl.offsetWidth + 'px';
+  if (sqEl.offsetTop < boardEl.clientHeight / 2) picker.style.top = sqEl.offsetTop + 'px';
+  else picker.style.bottom = (boardEl.clientHeight - sqEl.offsetTop - sqEl.offsetHeight) + 'px';
+  picker.addEventListener('pointerdown', (e) => e.stopPropagation()); // 防止棋盘监听把点击当作"点空白取消"
+  for (const t of ['q', 'n', 'b', 'r']) { // 后、马、象、车
+    const b = document.createElement('button');
+    b.type = 'button';
+    const img = document.createElement('img');
+    img.src = `./assets/pieces/${color}${t.toUpperCase()}.svg`;
+    img.alt = t;
+    img.draggable = false;
+    b.appendChild(img);
+    b.addEventListener('click', () => completePromotion(t));
+    picker.appendChild(b);
+  }
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'promo-cancel';
+  x.textContent = '✕';
+  x.addEventListener('click', cancelPromotion);
+  picker.appendChild(x);
+  boardEl.appendChild(picker);
+  promoEl = picker;
+}
+
+function removePromoPicker() {
+  if (promoEl) {
+    promoEl.remove();
+    promoEl = null;
+  }
+}
+
+// 静默中止（局面导航/翻转/摆棋时调用）
+function abortPromotion() {
+  pendingPromotion = null;
+  removePromoPicker();
+}
+
+function cancelPromotion() {
+  abortPromotion();
+  renderAll();
+}
+
+function completePromotion(t) {
+  const p = pendingPromotion;
+  abortPromotion();
+  if (!p) return;
+  let made;
+  try {
+    made = chess.move({ from: p.from, to: p.to, promotion: t });
+  } catch {
+    renderAll();
+    return;
+  }
+  history.push(made);
+  clearHint();
+  playMoveSound(made);
+  afterPositionChange();
+}
+
 // ---- 引擎提示（单次 + 持续） ----
+// 防重复：过滤会回到已出现过局面的着法（若全部着法都会重复则不过滤），
+// 结果经 UCI searchmoves 交给引擎，在剩余着法中选最佳
+function nonRepeatingMoves() {
+  const key = (fen) => fen.split(' ').slice(0, 4).join(' ');
+  const seen = new Set();
+  const hist = chess.history({ verbose: true });
+  if (hist.length) seen.add(key(hist[0].before));
+  for (const m of hist) seen.add(key(m.after));
+  const legal = chess.moves({ verbose: true });
+  const safe = legal.filter((m) => !seen.has(key(m.after)));
+  return safe.length && safe.length < legal.length ? safe.map((m) => m.lan) : null;
+}
+
 async function runEngineHint() {
   if (thinking || setupMode || isLocked()) return;
   thinking = true;
@@ -188,7 +301,7 @@ async function runEngineHint() {
   hintEl.textContent = '💡 引擎思考中…';
   const requestFen = chess.fen();
   try {
-    const uci = await engine.bestMove(requestFen, 1200);
+    const uci = await engine.bestMove(requestFen, 1200, nonRepeatingMoves());
     thinking = false;
     if (setupMode) {
       hintEl.hidden = true;
@@ -235,6 +348,7 @@ const emptyCounts = () => ({
 const boardSnapshot = (c) => c.board().map((row) => row.map((x) => (x ? { type: x.type, color: x.color } : null)));
 
 function enterSetup() {
+  abortPromotion();
   setupMode = true;
   setupBoard = boardSnapshot(chess);
   removed = emptyCounts();
@@ -348,6 +462,7 @@ const inTray = (x, y) => {
 
 boardEl.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (pendingPromotion) { cancelPromotion(); return; } // 升变选择中：点棋盘任意处取消
   const sqEl = e.target.closest('[data-square]');
   if (!sqEl) return;
   const sq = sqEl.dataset.square;
@@ -375,7 +490,9 @@ boardEl.addEventListener('pointerdown', (e) => {
     };
     try { boardEl.setPointerCapture(e.pointerId); } catch { /* 忽略无效 pointerId */ }
   } else if (selected) {
-    if (tryMove(sq)) afterPositionChange();
+    const r = tryMove(sq);
+    if (r === 'moved') afterPositionChange();
+    else if (r === 'promo') renderAll();
     else {
       clearSelection();
       renderAll();
@@ -461,11 +578,12 @@ function dragEnd(e, cancelled) {
 
   if (d.moved) {
     const dest = board.squareAt(e.clientX, e.clientY);
-    if (dest && dest !== d.from && tryMove(dest)) {
+    const r = dest && dest !== d.from ? tryMove(dest) : false;
+    if (r === 'moved') {
       afterPositionChange();
       return;
     }
-    renderAll(); // 不合法则自然弹回，选中与落点提示保留
+    renderAll(); // promo：弹出选子框；非法：自然弹回，选中与落点提示保留
   } else if (d.wasSelected) {
     clearSelection(); // 原地点击已选中的子 → 取消选中
     renderAll();
@@ -481,6 +599,7 @@ trayEl.addEventListener('pointercancel', (e) => dragEnd(e, true));
 
 // ---- 面板按钮 ----
 function resetTo(fen) {
+  abortPromotion();
   if (fen) chess.load(fen);
   else chess.reset();
   history.reset(chess.fen());
@@ -496,12 +615,14 @@ btnNew.addEventListener('click', () => {
 });
 
 btnFlip.addEventListener('click', () => {
+  abortPromotion(); // 翻转后选子框坐标失效，直接取消
   board.setOrientation(board.getOrientation() === 'w' ? 'b' : 'w');
   renderAll();
 });
 
 btnUndo.addEventListener('click', () => {
   if (setupMode || !history.canUndo()) return;
+  abortPromotion();
   chess.undo();
   history.undo();
   clearSelection();
@@ -514,6 +635,7 @@ btnRedo.addEventListener('click', () => {
   if (setupMode) return;
   const entry = history.redo();
   if (!entry) return;
+  abortPromotion();
   const mv = chess.move(entry.san); // 重放存储的 SAN，保持引擎内部历史一致
   clearSelection();
   clearHint();
@@ -572,6 +694,7 @@ openingSelect.addEventListener('change', () => {
 // 摆题/开发钩子：window.app.loadFen('...')
 window.app = {
   chess,
+  engine, // 调试钩子：可直接验证 searchmoves 等 UCI 行为
   renderAll,
   loadFen(fen) {
     if (setupMode) leaveSetupUI(); // 钩子载入直接放弃摆棋中的局面
@@ -583,3 +706,4 @@ window.app = {
 };
 
 renderAll();
+if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面

@@ -26,7 +26,7 @@ export function createBoard(container) {
       img.alt = '';
       img.draggable = false;
       el.appendChild(img);
-      for (const layer of ['safety', 'sel']) {
+      for (const layer of ['safety', 'sel', 'badge']) {
         const ly = document.createElement('div');
         ly.className = 'ly ' + layer;
         el.appendChild(ly);
@@ -116,7 +116,7 @@ export function createBoard(container) {
   }
 
   // 全量幂等重绘：64 格 class 切换 + img src + 箭头层重建，无 diff
-  function render({ position, lastMove, control, safety, hints, selected, xrayLines, hintMove }) {
+  function render({ position, lastMove, control, safety, hints, selected, xrayLines, hintMove, endBadges }) {
     const hintMap = new Map();
     if (hints) for (const h of hints) hintMap.set(h.to, h.capture);
     const last = new Set(lastMove || []);
@@ -139,6 +139,8 @@ export function createBoard(container) {
         el.classList.remove('safety-attacked', 'safety-defended', 'safety-undefended');
         if (safety && safety[name]) el.classList.add('safety-' + safety[name]);
 
+        el.classList.remove('badge-mate', 'badge-win', 'badge-draw');
+
         if (cell) {
           const src = `./assets/pieces/${cell.color}${cell.type.toUpperCase()}.svg`;
           if (img.getAttribute('src') !== src) img.setAttribute('src', src);
@@ -148,6 +150,12 @@ export function createBoard(container) {
           img.classList.remove('show');
           img.alt = '';
         }
+      }
+    }
+
+    if (endBadges) {
+      for (const b of endBadges) {
+        if (b.square) squares.get(b.square).el.classList.add('badge-' + b.kind);
       }
     }
 
