@@ -5,6 +5,7 @@ import { History } from './history.js';
 import { createEngine } from './engine.js';
 import { OPENINGS } from './openings.js';
 import { sound } from './sound.js';
+import { commentate, abortCommentary } from './commentary.js';
 
 const chess = new Chess();
 const history = new History(chess.fen());
@@ -18,6 +19,7 @@ let showXray = true;
 let hint = null; // { from, to, san }：引擎提示的最佳走法
 let thinking = false;
 let autoHint = true; // 持续提示：每次局面变化后自动分析（默认开启）
+let showCommentary = true; // AI 实时解说：每步走完自动解说（默认开启）
 
 // 自由摆棋模式
 let setupMode = false;
@@ -45,6 +47,8 @@ const setupTurnSel = $id('setup-turn');
 const btnClear = $id('btn-clear');
 const btnStartPos = $id('btn-start-pos');
 const btnDone = $id('btn-done');
+const cmtList = $id('cmt-list');
+const btnCommentary = $id('btn-commentary');
 const openingSelect = $id('opening-select');
 const openingInfo = $id('opening-info');
 const openingName = $id('opening-name');
@@ -132,6 +136,7 @@ function tryMove(to) {
   clearSelection();
   clearHint();
   playMoveSound(made);
+  requestCommentary(made);
   return 'moved';
 }
 
@@ -210,6 +215,66 @@ function renderAll() {
   openingSelect.disabled = setupMode;
 }
 
+// ---- AI 实时解说 ----
+function clearCommentary() {
+  abortCommentary();
+  cmtList.replaceChildren();
+  const p = document.createElement('p');
+  p.className = 'cmt-empty';
+  p.textContent = '走一步棋，听听 AI 怎么说 ♟';
+  cmtList.appendChild(p);
+}
+
+function addCmtItem(label) {
+  const empty = cmtList.querySelector('.cmt-empty');
+  if (empty) empty.remove();
+  const item = document.createElement('div');
+  item.className = 'cmt-item';
+  const mv = document.createElement('span');
+  mv.className = 'cmt-move';
+  mv.textContent = label;
+  const txt = document.createElement('span');
+  txt.className = 'cmt-text';
+  txt.textContent = '…';
+  item.appendChild(mv);
+  item.appendChild(txt);
+  cmtList.appendChild(item);
+  cmtList.scrollTop = cmtList.scrollHeight;
+  return txt;
+}
+
+function streamCommentary(label, payload) {
+  const el = addCmtItem(label);
+  let text = '';
+  commentate(payload, {
+    onDelta: (t) => {
+      text += t;
+      el.textContent = text;
+      cmtList.scrollTop = cmtList.scrollHeight;
+    },
+    onDone: () => {
+      if (!text) el.textContent = '（无解说）';
+    },
+    onError: () => {
+      el.textContent = '解说暂不可用';
+      el.classList.add('cmt-fail');
+    },
+  });
+}
+
+// 走完一步后调用（此时该着已入 chess 历史）
+function requestCommentary(mv) {
+  if (!showCommentary || setupMode) return;
+  const n = chess.history().length;
+  const label = Math.ceil(n / 2) + (n % 2 === 1 ? '.' : '...') + ' ' + mv.san;
+  streamCommentary(label, { moves: chess.history(), lastMove: mv.san, fen: chess.fen() });
+}
+
+function requestOpeningCommentary(op) {
+  if (!showCommentary) return;
+  streamCommentary('📖 ' + op.name, { opening: op.name, moves: op.moves, fen: chess.fen() });
+}
+
 // ---- 升变选子（后/马/象/车，Chess.com 式弹窗） ----
 let pendingPromotion = null; // { from, to }
 let promoEl = null;
@@ -277,6 +342,7 @@ function completePromotion(t) {
   history.push(made);
   clearHint();
   playMoveSound(made);
+  requestCommentary(made);
   afterPositionChange();
 }
 
@@ -416,6 +482,7 @@ function exitSetup() {
   history.reset(chess.fen());
   openingSelect.value = '';
   openingInfo.hidden = true;
+  clearCommentary();
   sound.move();
   afterPositionChange();
 }
@@ -608,6 +675,7 @@ function resetTo(fen) {
   history.reset(chess.fen());
   clearSelection();
   clearHint();
+  clearCommentary();
 }
 
 btnNew.addEventListener('click', () => {
@@ -626,6 +694,7 @@ btnFlip.addEventListener('click', () => {
 btnUndo.addEventListener('click', () => {
   if (setupMode || !history.canUndo()) return;
   abortPromotion();
+  abortCommentary(); // 在途解说随局面回退作废；已有解说保留
   chess.undo();
   history.undo();
   clearSelection();
@@ -658,6 +727,10 @@ bindToggle(btnControl, () => showControl, (v) => { showControl = v; });
 bindToggle(btnSafety, () => showSafety, (v) => { showSafety = v; });
 bindToggle(btnXray, () => showXray, (v) => { showXray = v; });
 bindToggle(btnSound, () => sound.isEnabled(), (v) => sound.setEnabled(v));
+bindToggle(btnCommentary, () => showCommentary, (v) => {
+  showCommentary = v;
+  if (!v) abortCommentary();
+});
 
 btnHint.addEventListener('click', runEngineHint);
 
@@ -688,6 +761,7 @@ openingSelect.addEventListener('change', () => {
   openingName.textContent = op.name;
   openingSide.textContent = op.side === 'w' ? '执白 · 白方开局' : '执黑 · 黑方防御';
   openingSide.className = 'opening-side ' + op.side;
+  requestOpeningCommentary(op); // 开局摆盘：整体解说一次开局意图
   openingOrigin.textContent = op.origin;
   openingPros.textContent = op.pros;
   openingCons.textContent = op.cons;

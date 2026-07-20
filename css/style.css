@@ -436,6 +436,25 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .opening-side.w { background: var(--sq-light); color: #3A3733; }
 .opening-side.b { background: #3A3733; color: var(--sq-light); border: 1px solid #55524E; }
 
+/* ---------- AI 实时解说 ---------- */
+.commentary { display: flex; flex-direction: column; gap: 8px; }
+.cmt-head { display: flex; justify-content: space-between; align-items: center; }
+.cmt-head h2 { font-size: 13px; font-weight: 700; }
+.cmt-list {
+  max-height: 34vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.cmt-item { font-size: 13px; line-height: 1.65; color: var(--text); }
+.cmt-move { color: var(--accent); font-weight: 700; margin-right: 6px; }
+.cmt-fail { color: var(--text-dim); }
+.cmt-empty { color: var(--text-dim); font-size: 12px; }
+
 /* ---------- 图例 ---------- */
 .legend { display: flex; flex-direction: column; gap: 8px; }
 .legend h2 { font-size: 13px; font-weight: 700; color: var(--text); }
