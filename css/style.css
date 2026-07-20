@@ -16,9 +16,10 @@
   --safe-red: #E02828;
   --safe-green: #2FB344;
   --safe-yellow: #E8A800;
-  /* 智能自适应：宽度充足时撑满上下沿；否则按剩余宽度收缩
-     （右侧栏 620 + 间距/页边距 ≈ 700），永不出现滚动 */
-  --board-size: min(calc(100vh - 24px), calc(100vw - 700px));
+  /* 智能自适应：高度撑满上下沿；同时预留足够左右留白，使左上角 Logo 不与棋盘重叠、
+     整块横向居中（右侧栏 620 + 左侧 Logo 留白 + 间距 ≈ 1020）。永不出现滚动。
+     大屏由高度封顶（不受此项影响），窄屏则按此收缩棋盘让出 Logo 空间。 */
+  --board-size: min(calc(100vh - 24px), calc(100vw - 1020px));
   --sq: calc(var(--board-size) / 8);
 }
 
@@ -56,15 +57,15 @@ body {
   text-decoration: none;
   color: var(--text);
   font-weight: 700;
-  font-size: 27px;
+  font-size: 20px;
   letter-spacing: 0.3px;
   background: rgba(38, 36, 33, 0.88); /* 悬浮药丸底衬：棋盘满高时叠在盘角也清晰可读 */
   backdrop-filter: blur(4px);
-  padding: 8px 16px 8px 10px;
-  border-radius: 13px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 11px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
-.brand img { width: 36px; height: 36px; display: block; }
+.brand img { width: 27px; height: 27px; display: block; }
 .brand .accent { color: var(--accent); }
 
 /* ---------- 棋盘 ---------- */
@@ -194,11 +195,13 @@ body {
   gap: 14px;
 }
 
-/* 右侧栏：上方 [菜单卡 | 解说卡] 并排等高，下方扁长图例卡与之等宽；整块随棋盘一起横向居中 */
+/* 右侧栏：整栏高度 = 棋盘高度；上方 [菜单卡 | 解说卡] 贴棋盘顶沿，下方扁长图例卡贴棋盘底沿 */
 .side {
   width: 620px;
+  height: var(--board-size);
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 14px;
 }
 .cards {
@@ -475,18 +478,18 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .cmt-fail { color: var(--text-dim); }
 .cmt-empty { color: var(--text-dim); font-size: 12px; }
 
-/* ---------- 图例（扁长方形卡片：标题 + 六项横向铺开 + 注释；字号恢复原始大小） ---------- */
-.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
-.legend h2 { flex: 0 0 100%; font-size: 13px; font-weight: 700; color: var(--text); }
+/* ---------- 图例（扁长方形卡片：标题 + 六项横向铺开 + 注释；字号缩小一号使卡片更矮） ---------- */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+.legend h2 { flex: 0 0 100%; font-size: 12px; font-weight: 700; color: var(--text); }
 .legend-item {
-  flex: 0 0 calc(33.333% - 14px); /* 一行三项 */
+  flex: 0 0 calc(33.333% - 12px); /* 一行三项 */
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
+  gap: 9px;
+  font-size: 12px;
   color: var(--text-dim);
 }
-.swatch { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; }
+.swatch { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
 /* 覆盖色画在深绿格底上，模拟实际叠加效果 */
 .swatch.ctrl-w    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-w), var(--ctrl-w)); }
 .swatch.ctrl-b    { background-color: var(--sq-dark); background-image: linear-gradient(var(--ctrl-b), var(--ctrl-b)); }
@@ -494,15 +497,15 @@ svg.arrows line { fill: none; stroke-linecap: round; }
 .swatch.safe-red    { background: var(--sq-light); border: 3px solid var(--safe-red); }
 .swatch.safe-green  { background: var(--sq-light); border: 3px solid var(--safe-green); }
 .swatch.safe-yellow { background: var(--sq-light); border: 3px solid var(--safe-yellow); }
-.legend .note { flex: 0 0 100%; font-size: 12px; line-height: 1.6; color: var(--text-dim); margin: 0; }
+.legend .note { flex: 0 0 100%; font-size: 11px; line-height: 1.5; color: var(--text-dim); margin: 0; }
 .legend .note strong { color: var(--text); }
 
 footer {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
-  line-height: 1.7;
+  line-height: 1.55;
   border-top: 1px solid #3A3733;
-  padding-top: 12px;
+  padding-top: 10px;
 }
 footer a { color: var(--text-dim); }
 
