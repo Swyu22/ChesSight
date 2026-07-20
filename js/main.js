@@ -48,6 +48,7 @@ const btnDone = $id('btn-done');
 const openingSelect = $id('opening-select');
 const openingInfo = $id('opening-info');
 const openingName = $id('opening-name');
+const openingSide = $id('opening-side');
 const openingOrigin = $id('opening-origin');
 const openingPros = $id('opening-pros');
 const openingCons = $id('opening-cons');
@@ -58,7 +59,7 @@ const board = createBoard(boardEl);
 for (const op of OPENINGS) {
   const o = document.createElement('option');
   o.value = op.id;
-  o.textContent = op.name;
+  o.textContent = (op.side === 'w' ? '⚪ ' : '⚫ ') + op.name; // 标注白方开局 / 黑方防御
   openingSelect.appendChild(o);
 }
 
@@ -301,7 +302,9 @@ async function runEngineHint() {
   hintEl.textContent = '💡 引擎思考中…';
   const requestFen = chess.fen();
   try {
-    const uci = await engine.bestMove(requestFen, 1200, nonRepeatingMoves());
+    const uci = await engine.bestMove(requestFen, 1200, nonRepeatingMoves(), (p) => {
+      hintEl.textContent = `💡 正在加载引擎 ${p}（首次使用需下载约 7MB）…`;
+    });
     thinking = false;
     if (setupMode) {
       hintEl.hidden = true;
@@ -325,7 +328,7 @@ async function runEngineHint() {
     }
   } catch (err) {
     thinking = false;
-    hintEl.textContent = '引擎加载失败：' + (err && err.message ? err.message : err);
+    hintEl.textContent = '⚠ ' + (err && err.message ? err.message : err) + ' — 点击💡或按 F1 重试';
   }
   renderAll();
 }
@@ -683,6 +686,8 @@ openingSelect.addEventListener('change', () => {
     history.push(mv);
   }
   openingName.textContent = op.name;
+  openingSide.textContent = op.side === 'w' ? '执白 · 白方开局' : '执黑 · 黑方防御';
+  openingSide.className = 'opening-side ' + op.side;
   openingOrigin.textContent = op.origin;
   openingPros.textContent = op.pros;
   openingCons.textContent = op.cons;

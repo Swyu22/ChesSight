@@ -2,6 +2,7 @@
 export const OPENINGS = [
   {
     id: 'italian',
+    side: 'w',
     name: '意大利开局 · Italian Game',
     moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4'],
     origin: '有文字记载的最古老开局之一，16—17 世纪意大利棋手（如格列柯 Greco）的手稿中即已系统研究，主变 3...Bc5 称"Giuoco Piano"（意为平稳之局）。',
@@ -10,6 +11,7 @@ export const OPENINGS = [
   },
   {
     id: 'ruylopez',
+    side: 'w',
     name: '西班牙开局（鲁伊·洛佩兹）· Ruy López',
     moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'],
     origin: '得名于 16 世纪西班牙神父鲁伊·洛佩兹·德·塞古拉，他在 1561 年的著作中系统分析了此开局；数百年来一直是 1.e4 e5 体系的最高殿堂，历代世界冠军的主战武器。',
@@ -18,6 +20,7 @@ export const OPENINGS = [
   },
   {
     id: 'sicilian',
+    side: 'b',
     name: '西西里防御 · Sicilian Defence',
     moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6'],
     origin: '16 世纪已见于波莱里奥的手稿，17 世纪因格列柯的分析得名"西西里"；20 世纪经纳伊多夫、菲舍尔、卡斯帕罗夫发扬光大，成为对抗 1.e4 最主流的争胜武器。',
@@ -26,6 +29,7 @@ export const OPENINGS = [
   },
   {
     id: 'french',
+    side: 'b',
     name: '法兰西防御 · French Defence',
     moves: ['e4', 'e6', 'd4', 'd5'],
     origin: '1834 年伦敦对巴黎的通信对抗赛中巴黎队采用此着并获胜，"法兰西"之名由此而来；此后成为最富哲学味的防御体系之一。',
@@ -34,6 +38,7 @@ export const OPENINGS = [
   },
   {
     id: 'carokann',
+    side: 'b',
     name: '卡罗-卡恩防御 · Caro-Kann Defence',
     moves: ['e4', 'c6', 'd4', 'd5'],
     origin: '得名于 1886 年发表分析的英国棋手霍雷肖·卡罗与奥地利棋手马库斯·卡恩；卡帕布兰卡、卡尔波夫等以稳健著称的世界冠军都长期信赖它。',
@@ -42,6 +47,7 @@ export const OPENINGS = [
   },
   {
     id: 'queensgambit',
+    side: 'w',
     name: '后翼弃兵 · Queen\'s Gambit',
     moves: ['d4', 'd5', 'c4'],
     origin: '早在 15 世纪的哥廷根手稿中已有记载，是最古老的"弃兵"；斯坦尼茨时代起成为 1.d4 的正统主流，1927 年卡帕布兰卡对阿廖欣的世界冠军赛几乎盘盘皆是它。',
@@ -50,6 +56,7 @@ export const OPENINGS = [
   },
   {
     id: 'kingsgambit',
+    side: 'w',
     name: '王翼弃兵 · King\'s Gambit',
     moves: ['e4', 'e5', 'f4'],
     origin: '浪漫主义时代（17—19 世纪）的旗帜性开局，1851 年安德森的"不朽之局"即由它奏响；当年棋手以拒吃弃兵为耻，攻杀名局辈出。',
@@ -58,6 +65,7 @@ export const OPENINGS = [
   },
   {
     id: 'kingsindian',
+    side: 'b',
     name: '王翼印度防御 · King\'s Indian Defence',
     moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6'],
     origin: '"印度体系"源自 19 世纪印度棋手莫赫什昌德·班纳吉对科克伦的实战；20 世纪 40 年代经苏联学派（布龙施泰因等）系统化，后成为菲舍尔与卡斯帕罗夫对抗 1.d4 的招牌。',
@@ -66,6 +74,7 @@ export const OPENINGS = [
   },
   {
     id: 'nimzoindian',
+    side: 'b',
     name: '尼姆佐-印度防御 · Nimzo-Indian Defence',
     moves: ['d4', 'Nf6', 'c4', 'e6', 'Nc3', 'Bb4'],
     origin: '超现代学派宗师阿龙·尼姆佐维奇于 1920 年代创立并以其命名，是"不占领中心而控制中心"理念的最佳注脚，至今仍是精英棋手对 1.d4 的一线选择。',
@@ -74,6 +83,7 @@ export const OPENINGS = [
   },
   {
     id: 'english',
+    side: 'w',
     name: '英国开局 · English Opening',
     moves: ['c4'],
     origin: '得名于英国棋手霍华德·斯汤顿——他在 1843 年对圣阿芒的对抗赛中反复使用；20 世纪经博特温尼克、卡尔波夫复兴，1987 年卡斯帕罗夫—卡尔波夫世界冠军赛中大放异彩。',
@@ -82,6 +92,7 @@ export const OPENINGS = [
   },
   {
     id: 'scotch',
+    side: 'w',
     name: '苏格兰开局 · Scotch Game',
     moves: ['e4', 'e5', 'Nf3', 'Nc6', 'd4', 'exd4', 'Nxd4'],
     origin: '得名于 1824—1828 年爱丁堡对伦敦的通信对抗赛（爱丁堡队借它获胜）；沉寂百年后，卡斯帕罗夫在 1990 年世界冠军赛中重新起用，令其翻红至今。',
@@ -90,6 +101,7 @@ export const OPENINGS = [
   },
   {
     id: 'petrov',
+    side: 'b',
     name: '彼得罗夫防御（俄罗斯防御）· Petrov Defence',
     moves: ['e4', 'e5', 'Nf3', 'Nf6'],
     origin: '19 世纪俄国棋手亚历山大·彼得罗夫与卡尔·耶尼施深入研究并以之命名，故又称"俄罗斯防御"；现代精英赛场上是最坚固的挡箭牌之一（卡鲁阿纳的招牌）。',
@@ -98,6 +110,7 @@ export const OPENINGS = [
   },
   {
     id: 'dutch',
+    side: 'b',
     name: '荷兰防御 · Dutch Defence',
     moves: ['d4', 'f5'],
     origin: '因荷兰出版的埃利亚斯·斯坦因 1789 年著作推荐而得名；列宁格勒变例与石墙结构使它在 20 世纪焕发活力，是最激进的反 1.d4 方案之一。',
@@ -106,6 +119,7 @@ export const OPENINGS = [
   },
   {
     id: 'london',
+    side: 'w',
     name: '伦敦体系 · London System',
     moves: ['d4', 'd5', 'Nf3', 'Nf6', 'Bf4'],
     origin: '名称源于 1922 年伦敦国际大赛上的流行用法；2010 年代经卡尔森等人的实践与网络棋潮推动而爆红，成为当代业余棋界的"国民开局"。',
