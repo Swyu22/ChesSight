@@ -1,0 +1,13 @@
+{
+  "name": "ChesSight · 国际象棋攻防可视化训练器",
+  "short_name": "ChesSight",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#302E2B",
+  "theme_color": "#302E2B",
+  "icons": [
+    { "src": "./assets/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

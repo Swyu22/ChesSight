@@ -31,6 +31,8 @@ body {
   color: var(--text);
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   min-height: 100vh;
+  touch-action: manipulation; /* 禁用双击缩放（配合 viewport 的 user-scalable=no 锁死移动端缩放） */
+  -webkit-text-size-adjust: 100%; /* 旋转/字号自适应时不自动放大文字 */
 }
 
 .app {

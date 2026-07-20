@@ -64,6 +64,13 @@ const boardEl = $id('board');
 const board = createBoard(boardEl);
 // 解说卡与菜单卡等高由 CSS `.cards { align-items: stretch }` 自动保证，无需 JS 镜像高度
 
+// 首个用户手势即解锁音频（浏览器自动播放策略下 AudioContext 初始为 suspended），
+// 使第一步棋就有音效，无需先切换一次音效开关。桌面与移动端同样处理。
+window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
+
+// 尽力锁定竖屏（仅在全屏 / 已安装为 PWA 时有效；普通浏览器标签页无法强制，会静默失败）。
+try { screen.orientation?.lock?.('portrait').catch(() => {}); } catch { /* 忽略 */ }
+
 for (const op of OPENINGS) {
   const o = document.createElement('option');
   o.value = op.id;

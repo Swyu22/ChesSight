@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>ChesSight · 国际象棋攻防可视化训练器</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +14,7 @@
   <link rel="stylesheet" href="./css/style.css">
   <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./assets/icon-180.png">
+  <link rel="manifest" href="./manifest.json">
 </head>
 <body>
   <a class="brand" href="./">
@@ -86,7 +89,6 @@
         <div class="legend-item"><span class="swatch safe-red"></span>被攻击（无论有无保护）</div>
         <div class="legend-item"><span class="swatch safe-green"></span>未被攻击 · 有保护</div>
         <div class="legend-item"><span class="swatch safe-yellow"></span>未被攻击 · 无保护（潜在弱点）</div>
-        <p class="note">注：兵只控制左右斜前方两格，<strong>直进格不算攻击</strong>。口径为几何控制——被牵制的子照常计入，贴着敌王的子也计为受王攻击。</p>
         <p class="note">X-Ray 虚线箭头 = 各棋子的杀伤路线（蓝 = 白方、红 = 黑方）；橙色粗箭头 = 引擎提示的最佳走法。</p>
       </div>
       <footer>
