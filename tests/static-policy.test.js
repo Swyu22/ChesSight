@@ -75,12 +75,13 @@ test('safety markers use uniform state-colored outlines and continuous hints sta
     /\.square\.safety-attacked\s+\.ly\.safety,[\s\S]*?\/\* 选中描边/,
   )?.[0] ?? '';
 
-  assert.match(safetyStyles, /border:\s*3px solid var\(--state-color\)/);
+  assert.match(safetyStyles, /border:\s*6px solid var\(--state-color\)/);
   assert.doesNotMatch(safetyStyles, /#(?:000|111)(?:000|111)?\b|\bblack\b/i);
   assert.doesNotMatch(safetyStyles, /border-(?:style|width)|box-shadow|\b(?:double|dashed)\b/);
   assert.match(safetyStyles, /\.square\.safety-attacked\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-red\);\s*\}/);
   assert.match(safetyStyles, /\.square\.safety-defended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-green\);\s*\}/);
   assert.match(safetyStyles, /\.square\.safety-undefended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-yellow\);\s*\}/);
+  assert.match(css, /\.square\.sel \.ly\.sel\s*\{[^}]*inset:\s*7px/s);
   assert.match(html, /<input\s+type="checkbox"\s+id="chk-auto"\s+checked>/);
   assert.match(main, /let autoHint = true;/);
   assert.match(main, /renderAll\(\);\s*if \(autoHint\) runEngineHint\(\);/);
