@@ -165,7 +165,7 @@ body {
 .square.safety-undefended .ly.safety {
   display: block;
   border-radius: 4px;
-  border-color: #111;
+  border-color: var(--state-color);
   box-shadow: inset 0 0 0 3px var(--state-color);
 }
 .square.safety-attacked   .ly.safety { --state-color: var(--safe-red); border-width: 5px; border-style: double; }

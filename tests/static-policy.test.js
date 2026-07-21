@@ -65,6 +65,26 @@ test('board and promotion controls expose state and accessible names', async () 
   assert.match(main, /btnStartPos[\s\S]*setupTurnSel\.value = 'w'/);
 });
 
+test('safety markers avoid black outlines and continuous hints start enabled', async () => {
+  const [css, html, main] = await Promise.all([
+    read('css/style.css'),
+    read('index.html'),
+    read('js/main.js'),
+  ]);
+  const safetyStyles = css.match(
+    /\.square\.safety-attacked\s+\.ly\.safety,[\s\S]*?\/\* 选中描边/,
+  )?.[0] ?? '';
+
+  assert.match(safetyStyles, /border-color:\s*var\(--state-color\)/);
+  assert.doesNotMatch(safetyStyles, /#(?:000|111)(?:000|111)?\b|\bblack\b/i);
+  assert.match(css, /\.square\.safety-attacked[^\n]*border-style:\s*double/);
+  assert.match(css, /\.square\.safety-defended[^\n]*border-style:\s*solid/);
+  assert.match(css, /\.square\.safety-undefended[^\n]*border-style:\s*dashed/);
+  assert.match(html, /<input\s+type="checkbox"\s+id="chk-auto"\s+checked>/);
+  assert.match(main, /let autoHint = true;/);
+  assert.match(main, /renderAll\(\);\s*if \(autoHint\) runEngineHint\(\);/);
+});
+
 test('vendor provenance and automated delivery checks are documented', async () => {
   const [vendor, workflow] = await Promise.all([read('VENDOR.md'), read('.github/workflows/ci.yml')]);
   assert.match(vendor, /SHA-256/);

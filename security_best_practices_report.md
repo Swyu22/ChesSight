@@ -73,7 +73,7 @@
 ### SEC-F04 — 前端外部字体与缺失 CSP（已修复）
 
 - `index.html:5-13` 删除 Google Fonts，使用本地系统字体；CSP 将脚本、对象、连接和 Worker 限定到业务所需来源。
-- 真实浏览器验证控制台无 CSP/资源错误，首屏没有 Google、Stockfish 或 AI 网络请求。
+- 真实浏览器验证控制台无 CSP/资源错误，首屏没有 Google 或 AI 网络请求。审计完成时 Stockfish 为按需加载；后续按产品要求恢复默认持续提示后，首屏会加载本地 Stockfish WASM。
 
 ### SEC-F05 — Secret 变体、日志和 CI 供应链（已修复）
 
@@ -83,7 +83,7 @@
 
 ## Verification evidence
 
-- `npm test`：31/31 通过；所有 outbound fetch 均 mock。
+- `npm test`：32/32 通过；所有 outbound fetch 均 mock。
 - `npm run check`：13 个 JS/MJS、JSON、内部引用、SVG 主动内容、WASM magic 与 vendor SHA-256 通过。
 - 浏览器：CSP 无错误；64 gridcells/8 rows；键盘走子、摆棋、升变焦点与 Escape 通过；1024/1025/1280/1340/1341/1440/390 视口无横向溢出。
 - 本地 HTTP：公开文件 200；secret、Git、Worker 源码与 traversal 404；监听地址仅 `127.0.0.1:8173`。
