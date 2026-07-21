@@ -65,7 +65,7 @@ test('board and promotion controls expose state and accessible names', async () 
   assert.match(main, /btnStartPos[\s\S]*setupTurnSel\.value = 'w'/);
 });
 
-test('safety markers avoid black outlines and continuous hints start enabled', async () => {
+test('safety markers use uniform state-colored outlines and continuous hints start enabled', async () => {
   const [css, html, main] = await Promise.all([
     read('css/style.css'),
     read('index.html'),
@@ -75,11 +75,12 @@ test('safety markers avoid black outlines and continuous hints start enabled', a
     /\.square\.safety-attacked\s+\.ly\.safety,[\s\S]*?\/\* 选中描边/,
   )?.[0] ?? '';
 
-  assert.match(safetyStyles, /border-color:\s*var\(--state-color\)/);
+  assert.match(safetyStyles, /border:\s*3px solid var\(--state-color\)/);
   assert.doesNotMatch(safetyStyles, /#(?:000|111)(?:000|111)?\b|\bblack\b/i);
-  assert.match(css, /\.square\.safety-attacked[^\n]*border-style:\s*double/);
-  assert.match(css, /\.square\.safety-defended[^\n]*border-style:\s*solid/);
-  assert.match(css, /\.square\.safety-undefended[^\n]*border-style:\s*dashed/);
+  assert.doesNotMatch(safetyStyles, /border-(?:style|width)|box-shadow|\b(?:double|dashed)\b/);
+  assert.match(safetyStyles, /\.square\.safety-attacked\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-red\);\s*\}/);
+  assert.match(safetyStyles, /\.square\.safety-defended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-green\);\s*\}/);
+  assert.match(safetyStyles, /\.square\.safety-undefended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-yellow\);\s*\}/);
   assert.match(html, /<input\s+type="checkbox"\s+id="chk-auto"\s+checked>/);
   assert.match(main, /let autoHint = true;/);
   assert.match(main, /renderAll\(\);\s*if \(autoHint\) runEngineHint\(\);/);
