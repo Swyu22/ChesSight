@@ -531,12 +531,13 @@ footer a { color: var(--text-dim); }
 /* ---------- 窄屏 / 移动端：Logo 顶部居中入流，上棋盘、下面板 ---------- */
 @media (max-width: 1024px) {
   :root { --board-size: min(94vw, 70vh); }
-  .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; }
-  .side { width: var(--board-size); }
-  .cards { flex-direction: column; }
-  .menu-panel, .legend-card { width: 100%; max-height: none; overflow: visible; }
-  /* 解说卡片固定高度、解说窗内滚动；!important 覆盖桌面 JS 设的内联高度 */
-  .panel-side { width: 100%; height: 320px !important; overflow: hidden; }
+  .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; gap: 14px; }
+  /* 摊平 .side / .cards 两层容器，使三张卡片与棋盘同为 .app 的 flex 项，才能用 order 重排 */
+  .side, .cards { display: contents; }
+  .menu-panel, .panel-side, .legend-card { width: var(--board-size); max-height: none; overflow: visible; }
+  /* AI 解说卡：置于 logo 与棋盘之间（order 负值排到棋盘前），高度取桌面移动端原值的一半，
+     解说窗在卡内滚动；!important 覆盖桌面 JS 设的内联高度 */
+  .panel-side { order: -1; height: 160px !important; overflow: hidden; padding: 12px; gap: 9px; }
   .legend-item { flex-basis: calc(50% - 10px); } /* 窄屏两列 */
   .brand {
     position: static;

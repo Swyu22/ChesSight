@@ -3,10 +3,19 @@
 //   本实现用"阻尼低频正弦体 + 带通噪声瞬态"合成木质敲击，无任何采样素材。）
 let ctx = null;
 let enabled = true;
+let pending = null; // 因上下文尚未解锁而没能发出的那一声：{ voice, at }
 
 function ac() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
   return ctx;
+}
+
+// 解锁成功后补播被搁置的那一声。超过 1s 视为过期直接丢弃（避免很久以后突然冒出一声）。
+function flushPending() {
+  if (!pending || !ctx || ctx.state !== 'running') return;
+  const { voice, at } = pending;
+  pending = null;
+  if (performance.now() - at < 1000) { try { voice(ctx); } catch { /* 无声降级 */ } }
 }
 
 // 播放前确保 AudioContext 处于 running 再发声：
@@ -20,7 +29,11 @@ function play(voice) {
   if (!enabled) return;
   const c = ac();
   if (c.state === 'running') { try { voice(c); } catch { /* 无声降级 */ } return; }
-  c.resume().then(() => { try { voice(c); } catch { /* 无声降级 */ } }).catch(() => { /* 无声降级 */ });
+  // 上下文还没解锁（iOS 首次打开走第一步时的常态）：把这一声记下来。
+  // iOS 上 resume() 若不在"具备用户激活的事件"里调用会被拒绝，此前直接吞掉异常
+  // 就等于永久丢掉第一声；现在改为搁置，等任一后续手势解锁成功后由 flushPending() 补播。
+  pending = { voice, at: performance.now() };
+  c.resume().then(flushPending).catch(() => { /* 无激活：留给后续手势解锁 */ });
 }
 
 // 木质敲击：body=正弦基频（快速下滑八度并指数衰减），noise=带通噪声瞬态（木头的"叩"感）
@@ -62,8 +75,9 @@ export const sound = {
   setEnabled(v) { enabled = v; },
   isEnabled: () => enabled,
   // 在用户手势内解锁 AudioContext（iOS/移动端自动播放策略）：播放一段 1 采样的缓冲源并 resume，
-  // 是 iOS 上最可靠的解锁方式。即便本次 resume 未在手势内立即落定，后续 play() 也会 resume-后-播，
-  // 双重保障使第一步棋即有音效，无需先切换一次音效开关。返回 true 表示已进入 running 状态。
+  // 是 iOS 上最可靠的解锁方式。须由「能授予用户激活」的事件调用（见 main.js UNLOCK_EVENTS）。
+  // 解锁成功后立刻补播 play() 搁置的那一声，因此第一步棋就有音效，无需先切换一次音效开关。
+  // 返回 true 表示已进入 running 状态。
   unlock() {
     try {
       const c = ac();
@@ -71,7 +85,8 @@ export const sound = {
       src.buffer = c.createBuffer(1, 1, 22050); // 1 采样静音缓冲
       src.connect(c.destination);
       src.start(0);
-      c.resume();
+      c.resume().then(flushPending).catch(() => { /* 本次事件无用户激活，留给下一次手势 */ });
+      flushPending(); // 若本次同步即进入 running（桌面常见），立刻补播
       return c.state === 'running';
     } catch { return false; }
   },

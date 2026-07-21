@@ -81,13 +81,15 @@ if (window.ResizeObserver) new ResizeObserver(scheduleSync).observe(menuPanelEl)
 window.addEventListener('resize', scheduleSync);
 
 // 用户手势即解锁音频（浏览器/iOS 自动播放策略下 AudioContext 初始为 suspended）。
-// 监听多种首个手势事件、并持续尝试直到 AudioContext 进入 running，成功后移除所有监听，
-// 使第一步棋就有音效，无需先切换一次音效开关。桌面与移动端同样处理。
-const UNLOCK_EVENTS = ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
+// 只监听「能授予用户激活」的事件：iOS/WebKit 下 touchstart / pointerdown **不**授予激活，
+// 在其中调用 resume() 会被拒绝，白白耗掉首次机会——这正是"移动端第一步没声音、
+// 必须先切一次音效开关（按钮的 click 才授予激活）"的根因。
+// 监听常驻不再移除：已解锁时仅一次状态判断，且 iOS 若之后再次挂起（来电/切后台）能自动重新解锁。
+// 捕获阶段先于棋盘自身的 pointerup 处理器，因此走子发声时上下文通常已在解锁中。
+const UNLOCK_EVENTS = ['pointerup', 'touchend', 'mouseup', 'click', 'keydown'];
 function unlockAudio() {
-  if (sound.unlock() || sound.isReady()) {
-    UNLOCK_EVENTS.forEach((ev) => window.removeEventListener(ev, unlockAudio, true));
-  }
+  if (sound.isReady()) return;
+  sound.unlock();
 }
 UNLOCK_EVENTS.forEach((ev) => window.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
 
