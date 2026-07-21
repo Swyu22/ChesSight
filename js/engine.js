@@ -95,5 +95,5 @@ export function createEngine(workerUrl) {
     });
   }
 
-  return { bestMove, preload: init };
+  return { bestMove };
 }

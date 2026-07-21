@@ -245,7 +245,7 @@ function renderAll() {
   btnNew.disabled = setupMode;
   btnUndo.disabled = setupMode || !history.canUndo();
   btnRedo.disabled = setupMode || !history.canRedo();
-  btnHint.disabled = setupMode || thinking || isLocked();
+  btnHint.disabled = setupMode || thinking || isLocked() || opponentToMove();
   openingSelect.disabled = setupMode;
   syncCmtHeight();  // 立即同步
   scheduleSync();   // 下一帧回流后补一次（提示换行等异步高度变化）
@@ -397,8 +397,12 @@ function nonRepeatingMoves() {
   return safe.length && safe.length < legal.length ? safe.map((m) => m.lan) : null;
 }
 
+// UCI 着法字符串 → chess.js move 对象（如 'a7a8q' → {from:'a7',to:'a8',promotion:'q'}）。
+// 非升变时 promotion 为 undefined，chess.js 会忽略该字段。
+const parseUci = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+
 async function runEngineHint() {
-  if (thinking || setupMode || isLocked()) return;
+  if (thinking || setupMode || isLocked() || opponentToMove()) return; // 对方回合不为「非你方」局面跑提示
   thinking = true;
   renderAll();
   hintEl.hidden = false;
@@ -421,13 +425,11 @@ async function runEngineHint() {
     } else if (!uci || uci === '(none)') {
       hintEl.textContent = '当前局面无可走着法';
     } else {
-      const from = uci.slice(0, 2);
-      const to = uci.slice(2, 4);
-      const promotion = uci[4];
+      const move = parseUci(uci);
       const probe = new Chess(requestFen); // 克隆局面求 SAN，不动主局面
-      const mv = probe.move({ from, to, promotion });
-      hint = { from, to, san: mv.san };
-      hintEl.textContent = `💡 Stockfish 18 最佳走法：${mv.san}（${from} → ${to}）`;
+      const mv = probe.move(move);
+      hint = { from: move.from, to: move.to, san: mv.san };
+      hintEl.textContent = `💡 Stockfish 18 最佳走法：${mv.san}（${move.from} → ${move.to}）`;
     }
   } catch (err) {
     thinking = false;
@@ -457,11 +459,9 @@ async function maybeComputerMove() {
   // 期间局面/开关/视角可能已变，重新校验后再落子
   if (chess.fen() !== requestFen || !opponentToMove()) return;
   if (!uci || uci === '(none)') return;
-  const from = uci.slice(0, 2);
-  const to = uci.slice(2, 4);
   let made;
   try {
-    made = uci[4] ? chess.move({ from, to, promotion: uci[4] }) : chess.move({ from, to });
+    made = chess.move(parseUci(uci));
   } catch {
     return;
   }
@@ -625,6 +625,7 @@ boardEl.addEventListener('pointerdown', (e) => {
   }
 
   if (isLocked()) return;
+  if (opponentToMove()) return; // 与电脑对弈：对方回合忽略棋盘输入，不代替电脑走子
   const piece = chess.get(sq);
   if (piece && piece.color === chess.turn()) {
     const wasSelected = selected === sq;
@@ -665,6 +666,7 @@ function dragMove(e) {
   if (!drag.moved) {
     if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 4) return;
     drag.moved = true;
+    drag.rect = boardEl.getBoundingClientRect(); // 拖拽期间棋盘几何不变：缓存一次，避免每帧写完 ghost 位置再读矩形造成强制回流
     drag.ghost = makeGhost(drag.src);
     if (drag.source === 'board') {
       const el = boardEl.querySelector(`[data-square="${drag.from}"]`);
@@ -673,7 +675,7 @@ function dragMove(e) {
   }
   drag.ghost.style.left = e.clientX + 'px';
   drag.ghost.style.top = e.clientY + 'px';
-  const over = board.squareAt(e.clientX, e.clientY);
+  const over = board.squareAt(e.clientX, e.clientY, drag.rect);
   if (drag.over !== over) {
     if (drag.over) {
       const el = boardEl.querySelector(`[data-square="${drag.over}"]`);
@@ -742,6 +744,69 @@ boardEl.addEventListener('pointercancel', (e) => dragEnd(e, true));
 trayEl.addEventListener('pointermove', dragMove);
 trayEl.addEventListener('pointerup', (e) => dragEnd(e, false));
 trayEl.addEventListener('pointercancel', (e) => dragEnd(e, true));
+
+// ---- 键盘走子（无障碍 WCAG 2.1.1 Keyboard）----
+// 漫游 tabindex：棋盘内始终恰有一格 tabindex=0（可 Tab 达）；方向键在格间移动焦点，
+// Enter/Space 激活（选中己方子 / 落子到合法格，复用与指针一致的走子路径），Esc 取消选中。
+function setKbFocus(name, focus = true) {
+  const el = boardEl.querySelector(`[data-square="${name}"]`);
+  if (!el) return;
+  const prev = boardEl.querySelector('.square[tabindex="0"]');
+  if (prev && prev !== el) prev.tabIndex = -1;
+  el.tabIndex = 0;
+  if (focus) el.focus();
+}
+// 方向键按「视觉」网格移动（随棋盘翻转自动对应上下左右），与 board.center/squareAt 同一坐标约定
+function stepSquare(name, dx, dy) {
+  const o = board.getOrientation();
+  const f = FILES.indexOf(name[0]);
+  const r = +name[1];
+  let vc = o === 'w' ? f : 7 - f;     // 视觉列 0..7（左→右）
+  let vr = o === 'w' ? 8 - r : r - 1; // 视觉行 0..7（上→下）
+  vc = Math.max(0, Math.min(7, vc + dx));
+  vr = Math.max(0, Math.min(7, vr + dy));
+  const nf = o === 'w' ? vc : 7 - vc;
+  const nr = o === 'w' ? 8 - vr : vr + 1;
+  return FILES[nf] + nr;
+}
+// 键盘「激活」一格：语义与指针点击完全一致（选中己方子 / 落子 / 取消选中）
+function activateSquare(sq) {
+  if (pendingPromotion) { cancelPromotion(); return; } // 与指针路径一致：升变待定时先取消，避免遗留过期 picker
+  if (setupMode || isLocked() || opponentToMove()) return; // 摆棋 / 终局 / 对方回合：键盘不走子
+  const piece = chess.get(sq);
+  if (piece && piece.color === chess.turn()) {
+    if (selected === sq) clearSelection();
+    else select(sq);
+    renderAll();
+  } else if (selected) {
+    const r = tryMove(sq);
+    if (r === 'moved') afterPositionChange();
+    else if (r === 'promo') renderAll();
+    else { clearSelection(); renderAll(); }
+  }
+}
+const ARROW_STEP = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+boardEl.addEventListener('keydown', (e) => {
+  const cur = document.activeElement;
+  const onSquare = cur && cur.classList && cur.classList.contains('square') && boardEl.contains(cur);
+  // 焦点在盘内其它可聚焦后代（如升变选子框的按钮）上时不拦截，交回其原生键盘语义，
+  // 否则 Enter/Space 会被 preventDefault 吞掉、方向键把焦点拽回棋盘，导致无法用键盘完成升变。
+  if (!onSquare) return;
+  const from = cur.dataset.square;
+  if (ARROW_STEP[e.key]) {
+    e.preventDefault();
+    const [dx, dy] = ARROW_STEP[e.key];
+    setKbFocus(stepSquare(from, dx, dy));
+  } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault();
+    activateSquare(from);
+  } else if (e.key === 'Escape' && selected) {
+    e.preventDefault();
+    clearSelection();
+    renderAll();
+  }
+});
+setKbFocus('e1', false); // 初始令一格可 Tab 达，但不抢焦点
 
 // ---- 面板按钮 ----
 function resetTo(fen) {

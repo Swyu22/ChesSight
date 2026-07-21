@@ -63,9 +63,12 @@ async function streamOnce(payload, signal, onText) {
 
 async function runJob(job) {
   const { payload, handlers } = job;
+  // 一个 job 一个 controller（而非每次 attempt 新建）：这样在两次尝试之间的 400ms 退避期内
+  // 若 clearCommentaryQueue() 触发 abort，重试的 fetch 会立即以 AbortError 放弃，
+  // 不再向已清空/已撤销的局面发出多余请求，也不会用过期解说填充 DOM 条目。
+  const my = new AbortController();
+  curAbort = my;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const my = new AbortController();
-    curAbort = my;
     try {
       const text = await streamOnce(payload, my.signal, (t) => handlers.onText(t));
       if (text.trim()) { curAbort = null; handlers.onDone(text); return; }

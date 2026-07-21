@@ -9,12 +9,17 @@ export function createBoard(container) {
   let orientation = 'w'; // 'w' 白方视角 / 'b' 黑方视角
   const squares = new Map(); // 'e4' -> { el, img }
 
+  container.setAttribute('role', 'grid'); // 键盘/辅助技术：整盘为 grid，格子为 gridcell
+
   for (let rank = 8; rank >= 1; rank--) {
     for (let f = 0; f < 8; f++) {
       const name = FILES[f] + rank;
       const el = document.createElement('div');
       el.className = 'square ' + ((f + rank) % 2 === 0 ? 'light' : 'dark');
       el.dataset.square = name;
+      el.setAttribute('role', 'gridcell');
+      el.setAttribute('aria-label', name); // 静态坐标名，供屏幕阅读器播报当前所在格
+      el.tabIndex = -1; // 漫游 tabindex：默认不可 Tab 达，由 main.js 令其中一格为 0
 
       for (const layer of ['last', 'ctrl', 'hint']) {
         const ly = document.createElement('div');
@@ -87,8 +92,8 @@ export function createBoard(container) {
   applyOrientation();
 
   // 视口坐标 → 格名（按当前视角），拖拽落点判定用；出界返回 null
-  function squareAt(clientX, clientY) {
-    const rect = container.getBoundingClientRect();
+  // rect 可选：拖拽期间传入起始时缓存的棋盘矩形，避免每次 pointermove 都强制回流
+  function squareAt(clientX, clientY, rect = container.getBoundingClientRect()) {
     const fx = Math.floor(((clientX - rect.left) / rect.width) * 8);
     const fy = Math.floor(((clientY - rect.top) / rect.height) * 8);
     if (fx < 0 || fx > 7 || fy < 0 || fy > 7) return null;

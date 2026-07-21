@@ -6,7 +6,7 @@
   --accent: #81B64C;
   --accent-hover: #8FC45F;
   --text: #FFFFFF;
-  --text-dim: #989795;
+  --text-dim: #B3B2B0; /* 次级文字：在 --panel-2(#3C3936) 底上达 WCAG AA 4.5:1（旧 #989795 仅 3.9:1） */
   --sq-light: #EBECD0;
   --sq-dark: #739552;
   --hl-last: rgba(255, 255, 51, 0.5);
@@ -25,6 +25,19 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; } /* 防止 display:flex 等规则覆盖 hidden 属性 */
+
+/* 仅供屏幕阅读器的可视隐藏文本（如页面主标题 h1） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 body {
   background: var(--bg);
@@ -91,6 +104,10 @@ body {
 .square { position: relative; cursor: pointer; }
 .square.light { background: var(--sq-light); }
 .square.dark  { background: var(--sq-dark); }
+/* 键盘焦点可见（WCAG 2.4.7）：内缩描边，不被棋盘 overflow:hidden 裁掉 */
+.square:focus-visible { outline: 3px solid #FFFFFF; outline-offset: -3px; z-index: 4; }
+/* 浅色格改用深色描边：白描边在 #EBECD0 上仅 1.2:1 几乎不可见，深色可达 13.8:1 */
+.square.light:focus-visible { outline-color: #1E1E1E; }
 
 /* 层叠顺序 = DOM 顺序：底色 → 最后一步 → 攻击覆盖 → 落点提示 → 棋子 → 安全框 → 选中描边 */
 .square .ly { position: absolute; inset: 0; pointer-events: none; display: none; }

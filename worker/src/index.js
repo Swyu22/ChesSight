@@ -20,7 +20,9 @@ function rateLimited(ip) {
   const arr = (hits.get(ip) || []).filter((t) => now - t < 60000);
   arr.push(now);
   hits.set(ip, arr);
-  if (hits.size > 5000) hits.clear(); // 防内存膨胀
+  if (hits.size > 5000) { // 防内存膨胀：仅淘汰窗口已过期的 IP，不整体清空（避免瞬间重置所有活跃窗口）
+    for (const [k, v] of hits) if (!v.length || now - v[v.length - 1] >= 60000) hits.delete(k);
+  }
   return arr.length > 30;
 }
 
@@ -57,7 +59,8 @@ export default {
     } catch {
       return new Response('Bad Request', { status: 400, headers: cors });
     }
-    const moves = Array.isArray(body.moves) ? body.moves.slice(0, 400).map(String) : [];
+    // 单个着法也截断长度（SAN 记号最长 ~7 字符），与 lastMove/fen/opening 一致，避免超大字符串放大上游 token 成本
+    const moves = Array.isArray(body.moves) ? body.moves.slice(0, 400).map((m) => String(m).slice(0, 8)) : [];
     const lastMove = typeof body.lastMove === 'string' ? body.lastMove.slice(0, 12) : '';
     const fen = typeof body.fen === 'string' ? body.fen.slice(0, 100) : '';
     const opening = typeof body.opening === 'string' ? body.opening.slice(0, 60) : '';
@@ -70,25 +73,32 @@ export default {
       ? `棋盘刚按开局库摆出「${opening}」（着法：${fmtMoves(moves)}）。请用不超过两句话整体解说这个开局的核心意图与棋风气质。`
       : `当前棋谱：${fmtMoves(moves)}\n当前局面 FEN：${fen}\n${sideJustMoved}刚走了最新一步：${lastMove}。请解说这一步。`;
 
-    const upstream = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-v4-flash',
-        stream: true,
-        // 关闭思考模式（非思考/直出）→ 最快出词、无 reasoning 前置延迟。
-        thinking: { type: 'disabled' },
-        max_tokens: 120,
-        temperature: 1.0,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    });
+    let upstream;
+    try {
+      upstream = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        signal: AbortSignal.timeout(15000), // 上游首字节/整体超时：卡死时不无限挂住请求
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-v4-flash',
+          stream: true,
+          // 关闭思考模式（非思考/直出）→ 最快出词、无 reasoning 前置延迟。
+          thinking: { type: 'disabled' },
+          max_tokens: 120,
+          temperature: 1.0,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+      });
+    } catch {
+      // 网络级失败 / 超时（AbortError）：显式返回带 CORS 的 502，前端可读到语义而非不透明错误
+      return new Response('Upstream error', { status: 502, headers: cors });
+    }
 
     if (!upstream.ok || !upstream.body) {
       return new Response('Upstream ' + upstream.status, { status: 502, headers: cors });
