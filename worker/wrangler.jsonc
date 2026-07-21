@@ -1,5 +1,21 @@
 {
   "name": "chessight-commentary",
   "main": "src/index.js",
-  "compatibility_date": "2026-07-01"
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat", "enable_request_signal"],
+  "secrets": {
+    "required": ["DEEPSEEK_API_KEY"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  }
 }

@@ -42,11 +42,25 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   min-height: 100vh;
-  touch-action: manipulation; /* 禁用双击缩放（配合 viewport 的 user-scalable=no 锁死移动端缩放） */
+  touch-action: auto;
   -webkit-text-size-adjust: 100%; /* 旋转/字号自适应时不自动放大文字 */
 }
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1001;
+  transform: translateY(-160%);
+  padding: 10px 14px;
+  border-radius: 7px;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+}
+.skip-link:focus { transform: translateY(0); }
 
 .app {
   display: flex;
@@ -99,9 +113,13 @@ body {
   flex-shrink: 0;
 }
 
-.board { touch-action: none; } /* 拖拽走子时阻止触屏滚动 */
+.board-row { display: contents; }
+.board { touch-action: pan-y pinch-zoom; }
 
 .square { position: relative; cursor: pointer; }
+/* 拖子手势从有棋子的格子开始：禁止浏览器接管纵向手势并发送 pointercancel。
+   空格继续继承 board 的 pan-y/pinch-zoom，页面仍可滚动和缩放。 */
+.square.has-piece { touch-action: none; }
 .square.light { background: var(--sq-light); }
 .square.dark  { background: var(--sq-dark); }
 /* 键盘焦点可见（WCAG 2.4.7）：内缩描边，不被棋盘 overflow:hidden 裁掉 */
@@ -144,10 +162,15 @@ body {
 
 .square.safety-attacked   .ly.safety,
 .square.safety-defended   .ly.safety,
-.square.safety-undefended .ly.safety { display: block; border-radius: 4px; }
-.square.safety-attacked   .ly.safety { border: 3px solid var(--safe-red); }
-.square.safety-defended   .ly.safety { border: 3px solid var(--safe-green); }
-.square.safety-undefended .ly.safety { border: 3px solid var(--safe-yellow); }
+.square.safety-undefended .ly.safety {
+  display: block;
+  border-radius: 4px;
+  border-color: #111;
+  box-shadow: inset 0 0 0 3px var(--state-color);
+}
+.square.safety-attacked   .ly.safety { --state-color: var(--safe-red); border-width: 5px; border-style: double; }
+.square.safety-defended   .ly.safety { --state-color: var(--safe-green); border-width: 3px; border-style: solid; }
+.square.safety-undefended .ly.safety { --state-color: var(--safe-yellow); border-width: 3px; border-style: dashed; }
 
 /* 选中描边内缩，避免遮盖最外圈 3px 的安全状态框 */
 /* ---------- 终局徽章（Chess.com 式叠加图层） ---------- */
@@ -247,7 +270,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  touch-action: none;
+  touch-action: pan-y pinch-zoom;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -262,10 +285,14 @@ body {
 .tray-slot {
   position: relative;
   aspect-ratio: 1;
+  touch-action: none;
   border-radius: 6px;
   background: var(--panel-2);
   cursor: grab;
+  border: 0;
+  color: inherit;
 }
+.tray-slot.kb-selected { outline: 3px solid #fff; outline-offset: 1px; }
 .tray-slot img { width: 100%; height: 100%; display: block; pointer-events: none; }
 .tray-slot.zero { opacity: 0.45; } /* 无限调色板：计数 0 时半透明但仍可取用 */
 .tray-badge {
@@ -371,17 +398,27 @@ body {
 
 .btn-primary {
   background: var(--accent);
+  color: #17210F;
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 
 .btn-toggle.active {
   background: var(--accent);
+  color: #17210F;
   box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.25);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 .btn-toggle.active:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn:focus-visible,
+.btn-hint-big:focus-visible,
+.promo-picker button:focus-visible,
+.tray-slot:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
 
 /* ---------- SVG 箭头层（X-Ray + 引擎提示） ---------- */
 svg.arrows {
@@ -481,6 +518,7 @@ svg.arrows line { fill: none; stroke-linecap: round; }
    条目累积时在窗内向上滚动、卡片大小不变 */
 .cmt-head { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; }
 .cmt-head h2 { font-size: 13px; font-weight: 700; }
+.cmt-disclosure { color: var(--text-dim); font-size: 11px; line-height: 1.45; }
 .cmt-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -529,7 +567,7 @@ footer {
 footer a { color: var(--text-dim); }
 
 /* ---------- 窄屏 / 移动端：Logo 顶部居中入流，上棋盘、下面板 ---------- */
-@media (max-width: 1024px) {
+@media (max-width: 1340px) {
   :root { --board-size: min(94vw, 70vh); }
   .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; gap: 14px; }
   /* 摊平 .side / .cards 两层容器，使三张卡片与棋盘同为 .app 的 flex 项，才能用 order 重排 */
@@ -548,4 +586,13 @@ footer a { color: var(--text-dim); }
   .brand img { width: 40px; height: 40px; }
   .tray { width: var(--board-size); }
   .tray-pieces { grid-auto-flow: row; grid-template-rows: auto auto; grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

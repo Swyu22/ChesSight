@@ -18,7 +18,7 @@ let showSafety = true;
 let showXray = true;
 let hint = null; // { from, to, san }：引擎提示的最佳走法
 let thinking = false;
-let autoHint = true; // 持续提示：每次局面变化后自动分析（默认开启）
+let autoHint = false; // 持续提示默认关闭：首次主动请求时才加载约 7MB 的 Stockfish WASM
 let showCommentary = true; // AI 实时解说：每步走完自动解说（默认开启）
 let vsCpu = false; // 与电脑对弈：对方由 Stockfish 自动应对（默认关闭）
 let cpuThinking = false;
@@ -27,6 +27,7 @@ let cpuThinking = false;
 let setupMode = false;
 let setupBoard = null; // 与 chess.board() 同形的 8×8 数组（行0=第8横排）
 let removed = null;    // 备选框计数徽章：已从棋盘移出的数量
+let setupKeyboardSelection = null; // { piece, from }；from=null 表示从备选框选择
 
 const $id = (id) => document.getElementById(id);
 const appEl = document.querySelector('.app');
@@ -51,6 +52,7 @@ const btnClear = $id('btn-clear');
 const btnStartPos = $id('btn-start-pos');
 const btnDone = $id('btn-done');
 const cmtList = $id('cmt-list');
+const cmtStatus = $id('cmt-status');
 const btnCommentary = $id('btn-commentary');
 const openingSelect = $id('opening-select');
 const openingInfo = $id('opening-info');
@@ -68,7 +70,7 @@ const board = createBoard(boardEl);
 const menuPanelEl = document.querySelector('.menu-panel');
 const cmtPanelEl = document.querySelector('.panel-side');
 function syncCmtHeight() {
-  if (window.innerWidth <= 1024) cmtPanelEl.style.height = '';
+  if (window.innerWidth <= 1340) cmtPanelEl.style.height = '';
   else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
 }
 let syncScheduled = false;
@@ -93,9 +95,6 @@ function unlockAudio() {
 }
 UNLOCK_EVENTS.forEach((ev) => window.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
 
-// 尽力锁定竖屏（仅在全屏 / 已安装为 PWA 时有效；普通浏览器标签页无法强制，会静默失败）。
-try { screen.orientation?.lock?.('portrait').catch(() => {}); } catch { /* 忽略 */ }
-
 for (const op of OPENINGS) {
   const o = document.createElement('option');
   o.value = op.id;
@@ -105,12 +104,17 @@ for (const op of OPENINGS) {
 
 // 备选框 12 个槽位：左列白方、右列黑方（K Q R B N P）
 const TYPES = ['k', 'q', 'r', 'b', 'n', 'p'];
+const SETUP_PIECE_NAMES = { k: '王', q: '后', r: '车', b: '象', n: '马', p: '兵' };
 for (const color of ['w', 'b']) {
   for (const t of TYPES) {
-    const slot = document.createElement('div');
+    const slot = document.createElement('button');
+    slot.type = 'button';
+    slot.tabIndex = 0; // 备选棋子必须能通过键盘 Tab 到达
     slot.className = 'tray-slot zero';
     slot.dataset.color = color;
     slot.dataset.type = t;
+    slot.setAttribute('aria-label', `选择${color === 'w' ? '白' : '黑'}${SETUP_PIECE_NAMES[t]}`);
+    slot.setAttribute('aria-pressed', 'false');
     const img = document.createElement('img');
     img.src = `./assets/pieces/${color}${t.toUpperCase()}.svg`;
     img.alt = '';
@@ -119,6 +123,12 @@ for (const color of ['w', 'b']) {
     badge.className = 'tray-badge';
     slot.appendChild(img);
     slot.appendChild(badge);
+    slot.addEventListener('click', () => {
+      if (!setupMode) return;
+      setupKeyboardSelection = { piece: { color, type: t }, from: null };
+      renderAll();
+      setKbFocus('e4');
+    });
     trayPieces.appendChild(slot);
   }
 }
@@ -194,17 +204,24 @@ function renderAll() {
       control: showControl ? a.control : null,
       safety: showSafety ? a.safety : null,
       hints: [],
-      selected: null,
+      selected: setupKeyboardSelection?.from || null,
       xrayLines: showXray ? attackLinesForBoard(setupBoard) : null,
       hintMove: null,
       endBadges: null,
     });
-    statusEl.textContent = '自由摆棋中 — 拖动摆放棋子，完成后点「完成」';
+    statusEl.textContent = setupKeyboardSelection
+      ? '自由摆棋中 — 用方向键选择格子，按 Enter 放置或移动；Delete 删除；Esc 取消选择'
+      : '自由摆棋中 — 可拖动，或先选择备选棋子再用键盘放置；完成后点「完成」';
     statusEl.classList.remove('alert');
     trayPieces.querySelectorAll('.tray-slot').forEach((slot) => {
       const n = removed[slot.dataset.color][slot.dataset.type];
       slot.querySelector('.tray-badge').textContent = n > 0 ? n : '';
       slot.classList.toggle('zero', n === 0);
+      const active = setupKeyboardSelection?.from === null
+        && setupKeyboardSelection.piece.color === slot.dataset.color
+        && setupKeyboardSelection.piece.type === slot.dataset.type;
+      slot.classList.toggle('kb-selected', Boolean(active));
+      slot.setAttribute('aria-pressed', String(Boolean(active)));
     });
   } else {
     const { control, safety } = analyze(chess);
@@ -256,6 +273,7 @@ function renderAll() {
 // ---- AI 实时解说 ----
 function clearCommentary() {
   clearCommentaryQueue();
+  cmtStatus.textContent = '';
   cmtList.replaceChildren();
   const p = document.createElement('p');
   p.className = 'cmt-empty';
@@ -293,10 +311,16 @@ function streamCommentary(label, payload) {
     },
     onDone: (t) => {
       if (!t.trim()) el.textContent = '（暂无解说）';
+      cmtStatus.textContent = `${label} 的 AI 解说已完成`;
     },
     onError: () => {
       el.textContent = '解说暂不可用';
       el.classList.add('cmt-fail');
+      cmtStatus.textContent = `${label} 的 AI 解说暂不可用`;
+    },
+    onCancel: () => {
+      el.parentElement?.remove();
+      cmtStatus.textContent = '';
     },
   });
 }
@@ -311,29 +335,35 @@ function requestCommentary(mv) {
 
 function requestOpeningCommentary(op) {
   if (!showCommentary) return;
-  streamCommentary('📖 ' + op.name, { opening: op.name, moves: op.moves, fen: chess.fen() });
+  streamCommentary('📖 ' + op.name, { opening: op.id, moves: op.moves });
 }
 
 // ---- 升变选子（后/马/象/车，Chess.com 式弹窗） ----
 let pendingPromotion = null; // { from, to }
 let promoEl = null;
+let promoReturnFocus = null;
 
 function showPromoPicker(to, color) {
   removePromoPicker();
   const sqEl = boardEl.querySelector(`[data-square="${to}"]`);
   const picker = document.createElement('div');
   picker.className = 'promo-picker';
+  picker.setAttribute('role', 'dialog');
+  picker.setAttribute('aria-modal', 'true');
+  picker.setAttribute('aria-label', '选择升变棋子');
   picker.style.left = sqEl.offsetLeft + 'px';
   picker.style.width = sqEl.offsetWidth + 'px';
   if (sqEl.offsetTop < boardEl.clientHeight / 2) picker.style.top = sqEl.offsetTop + 'px';
   else picker.style.bottom = (boardEl.clientHeight - sqEl.offsetTop - sqEl.offsetHeight) + 'px';
   picker.addEventListener('pointerdown', (e) => e.stopPropagation()); // 防止棋盘监听把点击当作"点空白取消"
-  for (const t of ['q', 'n', 'b', 'r']) { // 后、马、象、车
+  const choices = ['q', 'n', 'b', 'r'];
+  for (const t of choices) { // 后、马、象、车
     const b = document.createElement('button');
     b.type = 'button';
+    b.setAttribute('aria-label', `升变为${color === 'w' ? '白' : '黑'}${SETUP_PIECE_NAMES[t]}`);
     const img = document.createElement('img');
     img.src = `./assets/pieces/${color}${t.toUpperCase()}.svg`;
-    img.alt = t;
+    img.alt = '';
     img.draggable = false;
     b.appendChild(img);
     b.addEventListener('click', () => completePromotion(t));
@@ -343,10 +373,26 @@ function showPromoPicker(to, color) {
   x.type = 'button';
   x.className = 'promo-cancel';
   x.textContent = '✕';
+  x.setAttribute('aria-label', '取消升变');
   x.addEventListener('click', cancelPromotion);
   picker.appendChild(x);
+  picker.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelPromotion();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const buttons = [...picker.querySelectorAll('button')];
+    const first = buttons[0];
+    const last = buttons.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
   boardEl.appendChild(picker);
   promoEl = picker;
+  promoReturnFocus = document.activeElement?.closest?.('.square') || sqEl;
+  picker.querySelector('button').focus();
 }
 
 function removePromoPicker() {
@@ -354,6 +400,8 @@ function removePromoPicker() {
     promoEl.remove();
     promoEl = null;
   }
+  if (promoReturnFocus?.isConnected) promoReturnFocus.focus();
+  promoReturnFocus = null;
 }
 
 // 静默中止（局面导航/翻转/摆棋时调用）
@@ -453,8 +501,12 @@ async function maybeComputerMove() {
   let uci;
   try {
     uci = await engine.bestMove(requestFen, 1000);
-  } catch {
+  } catch (error) {
     cpuThinking = false;
+    vsCpu = false;
+    chkVsCpu.checked = false;
+    statusEl.textContent = '电脑引擎暂不可用，已切回手动对弈：' + (error?.message || '请稍后重试');
+    statusEl.classList.add('alert');
     return;
   }
   cpuThinking = false;
@@ -499,6 +551,7 @@ function enterSetup() {
   setupMode = true;
   setupBoard = boardSnapshot(chess);
   removed = emptyCounts();
+  setupKeyboardSelection = null;
   setupTurnSel.value = chess.turn();
   clearSelection();
   clearHint();
@@ -542,6 +595,7 @@ function buildFen() {
 
 function leaveSetupUI() {
   setupMode = false;
+  setupKeyboardSelection = null;
   appEl.classList.remove('setup');
   trayEl.hidden = true;
   btnSetup.classList.remove('active');
@@ -568,6 +622,7 @@ function exitSetup() {
 btnSetup.addEventListener('click', () => (setupMode ? exitSetup() : enterSetup()));
 btnDone.addEventListener('click', exitSetup);
 btnClear.addEventListener('click', () => {
+  setupKeyboardSelection = null;
   for (const row of setupBoard) {
     for (let j = 0; j < 8; j++) {
       const c = row[j];
@@ -582,6 +637,8 @@ btnClear.addEventListener('click', () => {
 btnStartPos.addEventListener('click', () => {
   setupBoard = boardSnapshot(new Chess());
   removed = emptyCounts();
+  setupKeyboardSelection = null;
+  setupTurnSel.value = 'w';
   renderAll();
 });
 
@@ -616,6 +673,7 @@ boardEl.addEventListener('pointerdown', (e) => {
   const sq = sqEl.dataset.square;
 
   if (setupMode) {
+    setupKeyboardSelection = null;
     const piece = getSetup(sq);
     if (!piece) return;
     drag = {
@@ -675,6 +733,7 @@ function dragMove(e) {
       if (el) el.classList.add('drag-origin');
     }
   }
+  if (e.cancelable) e.preventDefault();
   drag.ghost.style.left = e.clientX + 'px';
   drag.ghost.style.top = e.clientY + 'px';
   const over = board.squareAt(e.clientX, e.clientY, drag.rect);
@@ -774,7 +833,35 @@ function stepSquare(name, dx, dy) {
 // 键盘「激活」一格：语义与指针点击完全一致（选中己方子 / 落子 / 取消选中）
 function activateSquare(sq) {
   if (pendingPromotion) { cancelPromotion(); return; } // 与指针路径一致：升变待定时先取消，避免遗留过期 picker
-  if (setupMode || isLocked() || opponentToMove()) return; // 摆棋 / 终局 / 对方回合：键盘不走子
+  if (setupMode) {
+    if (setupKeyboardSelection) {
+      const { piece, from } = setupKeyboardSelection;
+      if (from === sq) {
+        setupKeyboardSelection = null;
+        renderAll();
+        return;
+      }
+      const occupied = getSetup(sq);
+      if (occupied) removed[occupied.color][occupied.type]++;
+      setSetup(sq, { color: piece.color, type: piece.type });
+      if (from) setSetup(from, null);
+      else {
+        const available = removed[piece.color][piece.type];
+        if (available > 0) removed[piece.color][piece.type] = available - 1;
+      }
+      setupKeyboardSelection = null;
+      sound.move();
+      renderAll();
+      return;
+    }
+    const piece = getSetup(sq);
+    if (piece) {
+      setupKeyboardSelection = { piece: { color: piece.color, type: piece.type }, from: sq };
+      renderAll();
+    }
+    return;
+  }
+  if (isLocked() || opponentToMove()) return; // 终局 / 对方回合：键盘不走子
   const piece = chess.get(sq);
   if (piece && piece.color === chess.turn()) {
     if (selected === sq) clearSelection();
@@ -802,9 +889,20 @@ boardEl.addEventListener('keydown', (e) => {
   } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
     e.preventDefault();
     activateSquare(from);
-  } else if (e.key === 'Escape' && selected) {
+  } else if (setupMode && (e.key === 'Delete' || e.key === 'Backspace')) {
+    const piece = getSetup(from);
+    if (piece) {
+      e.preventDefault();
+      setSetup(from, null);
+      removed[piece.color][piece.type]++;
+      setupKeyboardSelection = null;
+      sound.move();
+      renderAll();
+    }
+  } else if (e.key === 'Escape' && (selected || setupKeyboardSelection)) {
     e.preventDefault();
     clearSelection();
+    setupKeyboardSelection = null;
     renderAll();
   }
 });
@@ -839,7 +937,7 @@ btnFlip.addEventListener('click', () => {
 btnUndo.addEventListener('click', () => {
   if (setupMode || !history.canUndo()) return;
   abortPromotion();
-  clearCommentaryQueue(); // 回退：清空待解说队列（不再补已撤销之后的着法）
+  clearCommentary(); // 回退：清空与已撤销棋谱关联的条目和待解说队列
   chess.undo();
   history.undo();
   clearSelection();
@@ -874,7 +972,7 @@ bindToggle(btnXray, () => showXray, (v) => { showXray = v; });
 bindToggle(btnSound, () => sound.isEnabled(), (v) => sound.setEnabled(v));
 bindToggle(btnCommentary, () => showCommentary, (v) => {
   showCommentary = v;
-  if (!v) clearCommentaryQueue(); // 关闭自动解说：清空待解说队列并中止在途
+  if (!v) clearCommentary(); // 关闭自动解说：移除占位条目并中止在途
 });
 
 btnHint.addEventListener('click', runEngineHint);

@@ -1,11 +1,12 @@
-// Stockfish 引擎封装：Web Worker + UCI 协议。
-// 使用单线程 lite 构建（GitHub Pages 无 COOP/COEP 响应头，不能用多线程版）。
-// WASM 约 7.3MB：先带进度手动预下载（写入 HTTP 缓存，worker 内部同 URL fetch 直接命中），
-// 全程带超时；失败/超时后自动重置，下一次调用即可重试。
-export function createEngine(workerUrl) {
+// Stockfish 引擎封装：Web Worker + UCI 协议。单线程 lite 构建适配静态托管。
+// 初始化截止时间覆盖 WASM 预下载、流式读取与 Worker UCI 握手的完整链路。
+export function createEngine(workerUrl, {
+  fetchImpl = (...args) => fetch(...args),
+  WorkerCtor = globalThis.Worker,
+  initTimeoutMs = 90000,
+} = {}) {
   let worker = null;
   let ready = null;
-
   const wasmUrl = workerUrl.replace(/\.js$/, '.wasm');
 
   function reset() {
@@ -16,81 +17,124 @@ export function createEngine(workerUrl) {
     ready = null;
   }
 
-  async function preloadWasm(onProgress) {
-    const resp = await fetch(wasmUrl);
-    if (!resp.ok) throw new Error('引擎文件下载失败（HTTP ' + resp.status + '）');
-    if (!resp.body) return; // 老浏览器无流式读取：退化为整体下载
-    const total = Number(resp.headers.get('Content-Length')) || 0;
-    const reader = resp.body.getReader();
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      got += value.length;
-      if (onProgress) {
-        if (total) onProgress(Math.min(100, Math.round((got / total) * 100)) + '%');
-        else onProgress((got / 1048576).toFixed(1) + ' MB');
+  function withAbort(promise, signal) {
+    if (signal.aborted) return Promise.reject(signal.reason);
+    return new Promise((resolve, reject) => {
+      const onAbort = () => reject(signal.reason);
+      signal.addEventListener('abort', onAbort, { once: true });
+      Promise.resolve(promise).then(
+        (value) => { signal.removeEventListener('abort', onAbort); resolve(value); },
+        (error) => { signal.removeEventListener('abort', onAbort); reject(error); },
+      );
+    });
+  }
+
+  async function preloadWasm(onProgress, signal) {
+    const response = await fetchImpl(wasmUrl, { signal });
+    if (!response.ok) throw new Error('引擎文件下载失败（HTTP ' + response.status + '）');
+    if (!response.body) return;
+    const total = Number(response.headers.get('Content-Length')) || 0;
+    const reader = response.body.getReader();
+    let complete = false;
+    let received = 0;
+    try {
+      for (;;) {
+        const { done, value } = await withAbort(reader.read(), signal);
+        if (done) { complete = true; break; }
+        received += value.length;
+        if (onProgress) {
+          const label = total
+            ? Math.min(100, Math.round((received / total) * 100)) + '%'
+            : (received / 1048576).toFixed(1) + ' MB';
+          onProgress(label);
+        }
       }
+    } finally {
+      if (!complete) await reader.cancel().catch(() => {});
+      reader.releaseLock();
     }
   }
 
   function init(onProgress) {
     if (ready) return ready;
     ready = (async () => {
-      await preloadWasm(onProgress).catch(() => { /* 预下载失败不阻塞，交给 worker 自行加载 */ });
-      worker = new Worker(workerUrl);
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { cleanup(); reject(new Error('引擎初始化超时（网络较慢可稍后重试）')); }, 90000);
-        const onMsg = (e) => {
-          if (e.data === 'uciok') { cleanup(); resolve(); }
-        };
-        const onErr = () => { cleanup(); reject(new Error('引擎 Worker 加载失败')); };
-        const cleanup = () => {
-          clearTimeout(timer);
-          worker.removeEventListener('message', onMsg);
-          worker.removeEventListener('error', onErr);
-        };
-        worker.addEventListener('message', onMsg);
-        worker.addEventListener('error', onErr);
-        worker.postMessage('uci');
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        controller.abort(new Error('引擎初始化超时（网络较慢可稍后重试）'));
+      }, initTimeoutMs);
+      try {
+        try {
+          await withAbort(preloadWasm(onProgress, controller.signal), controller.signal);
+        } catch (error) {
+          if (controller.signal.aborted) throw controller.signal.reason;
+          // 预下载不是硬依赖：普通网络错误时交由 Worker 自行加载同一 WASM URL。
+        }
+
+        if (typeof WorkerCtor !== 'function') throw new Error('当前浏览器不支持 Web Worker');
+        worker = new WorkerCtor(workerUrl);
+        await new Promise((resolve, reject) => {
+            const onMessage = (event) => {
+              if (event.data === 'uciok') { cleanup(); resolve(); }
+            };
+            const onError = () => { cleanup(); reject(new Error('引擎 Worker 加载失败')); };
+            const onAbort = () => { cleanup(); reject(controller.signal.reason); };
+            const cleanup = () => {
+              worker?.removeEventListener('message', onMessage);
+              worker?.removeEventListener('error', onError);
+              worker?.removeEventListener('messageerror', onError);
+              controller.signal.removeEventListener('abort', onAbort);
+            };
+            worker.addEventListener('message', onMessage);
+            worker.addEventListener('error', onError);
+            worker.addEventListener('messageerror', onError);
+            controller.signal.addEventListener('abort', onAbort, { once: true });
+            worker.postMessage('uci');
+          });
+      } finally {
+        clearTimeout(timeout);
+      }
     })();
-    ready.catch(reset); // 失败即重置，允许下次调用重试
+    ready.catch(reset);
     return ready;
   }
 
-  // 返回 UCI 着法字符串（如 'e2e4'、'a7a8q'），无着法时返回 '(none)'。
-  // searchmoves：限定搜索的着法列表（LAN 格式），用于防重复等过滤。
-  // 串行化：单 worker 一次只能算一个局面，持续提示与「与电脑对弈」可能并发调用，
-  // 用 promise 链保证一个算完再算下一个，避免 bestmove 响应串扰。
+  // 单 Worker 串行搜索，避免多个 bestmove 响应互相串扰。
   let chain = Promise.resolve();
   function bestMove(fen, movetime = 1200, searchmoves = null, onProgress = null) {
     const task = () => rawBestMove(fen, movetime, searchmoves, onProgress);
-    const p = chain.then(task, task);
-    chain = p.then(() => {}, () => {}); // 吞掉结果/异常以维持链路
-    return p;
+    const result = chain.then(task, task);
+    chain = result.then(() => {}, () => {});
+    return result;
   }
 
   async function rawBestMove(fen, movetime, searchmoves, onProgress) {
     await init(onProgress);
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        worker.removeEventListener('message', onMsg);
-        reset(); // 引擎无响应：重置以便重试
-        reject(new Error('引擎响应超时'));
-      }, movetime + 20000);
-      const onMsg = (e) => {
-        if (typeof e.data !== 'string') return;
-        const m = e.data.match(/^bestmove\s+(\S+)/);
-        if (m) {
-          clearTimeout(timer);
-          worker.removeEventListener('message', onMsg);
-          resolve(m[1]);
-        }
+      const finish = (error, result) => {
+        clearTimeout(timer);
+        worker?.removeEventListener('message', onMessage);
+        worker?.removeEventListener('error', onWorkerError);
+        worker?.removeEventListener('messageerror', onWorkerError);
+        if (error) reject(error); else resolve(result);
       };
-      worker.addEventListener('message', onMsg);
+      const timer = setTimeout(() => {
+        finish(new Error('引擎响应超时'));
+        reset();
+      }, movetime + 20000);
+      const onMessage = (event) => {
+        if (typeof event.data !== 'string') return;
+        const match = event.data.match(/^bestmove\s+(\S+)/);
+        if (match) finish(null, match[1]);
+      };
+      const onWorkerError = () => {
+        finish(new Error('引擎 Worker 运行失败'));
+        reset();
+      };
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onWorkerError);
+      worker.addEventListener('messageerror', onWorkerError);
       worker.postMessage('position fen ' + fen);
-      const restrict = searchmoves && searchmoves.length ? ' searchmoves ' + searchmoves.join(' ') : '';
+      const restrict = searchmoves?.length ? ' searchmoves ' + searchmoves.join(' ') : '';
       worker.postMessage('go movetime ' + movetime + restrict);
     });
   }

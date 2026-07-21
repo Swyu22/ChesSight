@@ -1,49 +1,71 @@
 # ChesSight · 国际象棋攻防可视化训练器
 
-把双方的"控制格"火力版图与每个棋子的安全状态实时画在棋盘上的纯前端训练工具，帮助训练控制格意识、子力安全意识与复盘习惯。
+把双方的“控制格”火力版图与每个棋子的安全状态实时画在棋盘上的纯前端训练工具，帮助训练控制格意识、子力安全意识与复盘习惯。
 
-**在线使用：<https://chessight.art>**（备用地址 <https://swyu22.github.io/ChesSight/>）
+**在线使用：<https://chessight.art>**。GitHub Pages 项目地址为 <https://swyu22.github.io/ChesSight/>；配置自定义域后，该地址会跳转到主域名，并非独立故障切换站点。
 
 ## 功能
 
-- **完整规则走子**（chess.js）：王车易位、吃过路兵、升变（自动升后）、将军 / 将杀 / 逼和检测，Chess.com 式点击或**拖拽**走子与落点提示
-- **攻击范围覆盖层**：蓝 = 仅白方控制、红 = 仅黑方控制、紫 = 双方均控制
-  - 口径为**几何控制**：兵只算斜吃方向（不含直进格）、滑子止于首个阻挡格且含该格、被牵制的子照常计入、含对己方子的保护
-- **子力安全标记**（红 > 绿 > 黄优先级）：红框 = 被攻击、绿框 = 未被攻击且有保护、黄框 = 未被攻击且无保护（潜在弱点）；王只在被将军时标红
-- **回放训练**：上一步 / 下一步（回退中走新着法则截断重做栈），每步后可视化全量重算
-- **X-Ray 杀伤线**：每个棋子的攻击射线以虚线箭头持续显示（蓝 = 白方、红 = 黑方），与覆盖层同口径
-- **引擎提示**：内置 Stockfish 18（lite NNUE，单线程 WASM，本地加载），💡提示按钮（快捷键 **F1**）给出当前局面最佳走法（文字 + 橙色箭头）；勾选"持续提示"后每步走完自动分析
-- **与电脑对弈**：勾选后对方（= 非当前棋盘视角方）由 Stockfish 自动应对，翻转棋盘即交换阵营
-- **AI 实时解说**：每步走完自动生成一句中文解说（DeepSeek 经 Cloudflare Worker 以 SSE 流式推送，API Key 藏于 Worker secret）；按走子顺序排队逐条补齐，快速连走也不漏解说，可一键关闭
-- **下棋音效**：WebAudio 实时合成（走子/吃子/易位/将军/升变/终局六种，Chess.com 风格木质手感），零采样素材，可一键静音
-- **PWA 可安装**：附 `manifest.json` 与应用图标，支持"添加到主屏幕"独立窗口运行
-- **自由摆棋**：无限调色板备选框（12 种棋子随取随放、计数徽章显示已移出数量），拖拽摆盘时控制格/安全框/X-Ray 实时刷新；完成时校验局面合法性，行棋方可选、易位权按王车原位自动推断
-- **棋盘翻转**：一键切换白方 / 黑方视角，坐标与箭头同步翻转
-- **知名开局库**：14 个经典开局一键摆盘（走子记入历史可回放），附每个开局的历史由来与优缺点简介
-- 可视化总开关默认全开；全关即退化为普通对弈盘
+- **完整规则走子**（chess.js）：王车易位、吃过路兵、后/马/象/车升变选择、将军、将杀与逼和检测；支持点击、拖拽和键盘走子。
+- **攻击范围与安全状态**：控制格覆盖层、被攻击/有保护/无保护三态标记，以及 X-Ray 杀伤线。安全状态同时使用边框样式、颜色和屏幕阅读器文本表达。
+- **回放训练**：上一步、下一步；回退后走新着法会截断重做分支。
+- **Stockfish 18**：按需加载约 7 MB 的单线程 lite WASM；点击 💡、按 F1、开启持续提示或与电脑对弈时才加载。持续提示默认关闭。
+- **AI 实时解说**：把当前棋谱和 FEN 发送到 ChesSight Cloudflare Worker，再由 DeepSeek 生成中文解说；可在界面中随时关闭。队列有超时、有限重试和长度上限。
+- **WebAudio 音效**：实时合成走子、吃子、易位、将军、升变和终局音效，不分发第三方采样素材。
+- **自由摆棋**：支持拖拽；键盘可选择备选棋子，使用方向键移动，Enter/Space 放置或移动，Delete/Backspace 删除，Escape 取消。
+- **开局库**：14 个经典开局一键摆盘，并提供历史、优点和缺点简介。
+- **添加到主屏幕**：提供 Web App Manifest、常规与 maskable 图标，可用独立窗口打开；当前没有 Service Worker，因此不承诺离线运行。
 
-## 训练场景
-
-| 场景 | 用法 |
-|---|---|
-| 左右互搏 | 自己走双方棋，观察每步后控制区变化 |
-| 逐步复盘 | 走完一段后用上一步 / 下一步回放，寻找悬子出现的时刻 |
-| 数子训练 | 关闭覆盖层，心算某格攻击者 / 保护者数量，再开启验证 |
+控制格采用几何控制口径：兵只计算斜吃方向，滑子止于首个阻挡格且包含该格，被牵制的子仍计入，并包含对己方棋子的保护。
 
 ## 本地运行
 
-纯静态站点，零构建。因使用 ES Modules 需通过本地服务器访问。端口用 **8173**（与解说 Worker 的 Origin 白名单 `localhost:8173` 一致，本地才能调用 AI 解说；其余功能与端口无关）：
+要求 Node.js 22 或更高版本。项目零构建，但必须通过 HTTP 访问 ES Modules：
 
 ```bash
-python3 -m http.server 8173
-# 打开 http://localhost:8173
+npm run serve
+# 仅监听 http://127.0.0.1:8173
 ```
 
-摆题钩子：浏览器控制台执行 `app.loadFen('<FEN>')` 可载入任意局面。
+仓库根目录可能含有被 Git 忽略的 `DS.env`、`.env*`、`.dev.vars*` 或 `.git/`。**不要**在根目录使用 `python3 -m http.server`、`npx serve .` 等通用目录服务器；它们可能把秘密文件或 Git 元数据暴露给本机网络。仓库自带服务器只允许访问 `index.html`、`manifest.json`、`assets/`、`css/` 和 `js/`。
+
+本地服务器端口固定为 8173 时，才匹配解说 Worker 的开发 Origin 白名单。摆题钩子：浏览器控制台执行 `app.loadFen('<FEN>')` 可载入局面。
+
+## 自动验证
+
+```bash
+npm test       # Node 单元/安全/静态策略测试
+npm run check  # 语法、JSON、资源引用、SVG、WASM 与 vendor 哈希
+```
+
+GitHub Actions 会在 push 与 pull request 上执行两项命令。测试中的所有外部 `fetch` 均使用 mock，不调用线上 DeepSeek 或生产 Worker。
+
+## AI Worker
+
+Worker 位于 `worker/`，API Key 只允许通过 Cloudflare secret 注入；不要写入前端、配置文件或 `DS.env`：
+
+```bash
+cd worker
+npx wrangler secret put DEEPSEEK_API_KEY
+npx wrangler deploy --dry-run
+```
+
+`wrangler.jsonc` 声明所需 secret、请求取消兼容标志和采样可观测性。运行时会校验 Origin、Content-Type、请求字节数、字段集合、SAN/FEN 基本结构和开局 ID，并限制单 isolate 的请求频率。
+
+重要边界：CORS Origin 白名单不是身份认证，脚本客户端可以伪造 Origin。正式环境仍应在 Cloudflare 账户层配置 WAF/Rate Limiting、费用告警/熔断，并评估 Turnstile 或用户会话证明；如启用自定义域，还应确认是否关闭未受保护的 `workers.dev` 入口。
+
+## 隐私与安全
+
+- AI 解说开启时会发送 SAN 棋谱与 FEN，不发送账户资料；项目本身没有登录或用户数据库。
+- 浏览器只把模型输出写入 `textContent`，不作为 HTML 执行。
+- 页面使用 Content Security Policy 限制脚本、对象、连接和 Worker 来源；WebAssembly 仅允许本地 Stockfish 运行所需能力。
+- 安全假设、信任边界和剩余风险见 `ChesSight-threat-model.md`；工程审计结果见 `SKILLS_AUDIT_REPORT.md`。
 
 ## 素材与许可
 
-- 棋子图形：**cburnett** 棋子集，作者 Colin M.L. Burnett（Cburnett），[CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)，来自 [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
-- 规则引擎：[chess.js](https://github.com/jhlywa/chess.js) v1.4.0（BSD-2-Clause），vendor 于 `js/vendor/chess.js`（许可证声明含于文件内），完全离线可用
-- 分析引擎：[Stockfish.js](https://github.com/nmrugg/stockfish.js) 18（GPLv3，基于 [Stockfish](https://github.com/official-stockfish/Stockfish)），vendor 单线程 lite 构建于 `js/vendor/stockfish-18-lite-single.{js,wasm}`，许可证声明含于 JS 文件头，源码见上述仓库
-- 本项目代码：MIT
+- 棋子图形：**cburnett** 棋子集，作者 Colin M.L. Burnett，[CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)，来自 [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)。
+- 规则引擎：[chess.js](https://github.com/jhlywa/chess.js) 1.4.0，BSD-2-Clause。
+- 分析引擎：[Stockfish.js](https://github.com/nmrugg/stockfish.js) 18 / [Stockfish](https://github.com/official-stockfish/Stockfish)，GPL-3.0。
+- 项目自有代码：MIT。
+
+精确版本、SHA-256、来源差异和发布合规待办记录在 [`VENDOR.md`](./VENDOR.md)。本地 Stockfish JavaScript glue 与 v18.0.0 同名官方发行文件并不一致，其对应源码与修改来源必须在正式再分发前由负责人确认。

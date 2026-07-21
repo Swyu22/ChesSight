@@ -2,28 +2,25 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://chessight-commentary.swyu22.workers.dev; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>ChesSight · 国际象棋攻防可视化训练器</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- 字体非阻塞加载：加载失败或缓慢时直接使用 system-ui 兜底，不阻塞首屏 -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="./css/style.css">
   <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./assets/icon-180.png">
   <link rel="manifest" href="./manifest.json">
 </head>
 <body>
+  <a class="skip-link" href="#board">跳到棋盘</a>
   <h1 class="sr-only">ChesSight · 国际象棋攻防可视化训练器</h1>
   <a class="brand" href="./">
-    <img src="./assets/icon.svg" alt="ChesSight 图标">
+    <img src="./assets/icon.svg" alt="">
     <span>Ches<span class="accent">Sight</span></span>
   </a>
-  <div class="app">
-    <aside id="tray" class="tray" hidden>
+  <main id="main-content" class="app">
+    <aside id="tray" class="tray" aria-label="自由摆棋备选棋子" hidden>
       <div class="tray-head">备选棋子</div>
       <div id="tray-pieces" class="tray-pieces"></div>
       <div class="tray-controls">
@@ -41,11 +38,11 @@
     <div id="board" class="board" aria-label="棋盘"></div>
     <div class="side">
     <div class="cards">
-    <aside class="panel menu-panel">
+    <section class="panel menu-panel" aria-label="对局控制">
       <div id="status" class="status" aria-live="polite">加载中…</div>
       <div id="hint" class="hint" aria-live="polite" hidden></div>
       <button id="btn-hint" class="btn-hint-big">💡 提示最佳走法<span class="kbd">F1</span></button>
-      <label class="auto-hint"><input type="checkbox" id="chk-auto" checked>持续提示（每步走完自动分析）</label>
+      <label class="auto-hint"><input type="checkbox" id="chk-auto">持续提示（每步走完自动分析）</label>
       <label class="auto-hint"><input type="checkbox" id="chk-vscpu">与电脑对弈（对方由 Stockfish 自动应对）</label>
       <div class="buttons">
         <button id="btn-new" class="btn btn-primary">新对局</button>
@@ -70,20 +67,22 @@
           <p><strong>缺点：</strong><span id="opening-cons"></span></p>
         </div>
       </div>
-    </aside>
-    <aside class="panel panel-side">
+    </section>
+    <section class="panel panel-side" aria-labelledby="commentary-heading">
       <div class="cmt-head">
-        <h2>AI 实时解说</h2>
+        <h2 id="commentary-heading">AI 实时解说</h2>
         <button id="btn-commentary" class="btn btn-toggle btn-mini active" aria-pressed="true">自动解说</button>
       </div>
-      <div id="cmt-list" class="cmt-list" aria-live="polite">
+      <p class="cmt-disclosure">开启后会把当前棋谱与局面发送到 ChesSight Worker，并由 DeepSeek AI 生成解说；可随时关闭。</p>
+      <div id="cmt-status" class="sr-only" role="status" aria-live="polite"></div>
+      <div id="cmt-list" class="cmt-list">
         <p class="cmt-empty">走一步棋，听听 AI 怎么说 ♟</p>
       </div>
-    </aside>
+    </section>
     </div>
-    <aside class="panel legend-card">
+    <aside class="panel legend-card" aria-labelledby="legend-heading">
       <div class="legend">
-        <h2>图例</h2>
+        <h2 id="legend-heading">图例</h2>
         <div class="legend-item"><span class="swatch ctrl-w"></span>仅白方控制</div>
         <div class="legend-item"><span class="swatch ctrl-b"></span>仅黑方控制</div>
         <div class="legend-item"><span class="swatch ctrl-both"></span>双方均控制</div>
@@ -98,7 +97,7 @@
       </footer>
     </aside>
     </div>
-  </div>
+  </main>
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

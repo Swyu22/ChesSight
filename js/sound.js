@@ -6,12 +6,16 @@ let enabled = true;
 let pending = null; // 因上下文尚未解锁而没能发出的那一声：{ voice, at }
 
 function ac() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx) return ctx;
+  const AudioContextCtor = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (!AudioContextCtor) return null;
+  try { ctx = new AudioContextCtor(); } catch { return null; }
   return ctx;
 }
 
 // 解锁成功后补播被搁置的那一声。超过 1s 视为过期直接丢弃（避免很久以后突然冒出一声）。
 function flushPending() {
+  if (!enabled) { pending = null; return; }
   if (!pending || !ctx || ctx.state !== 'running') return;
   const { voice, at } = pending;
   pending = null;
@@ -28,6 +32,7 @@ function flushPending() {
 function play(voice) {
   if (!enabled) return;
   const c = ac();
+  if (!c) return;
   if (c.state === 'running') { try { voice(c); } catch { /* 无声降级 */ } return; }
   // 上下文还没解锁（iOS 首次打开走第一步时的常态）：把这一声记下来。
   // iOS 上 resume() 若不在"具备用户激活的事件"里调用会被拒绝，此前直接吞掉异常
@@ -37,8 +42,8 @@ function play(voice) {
 }
 
 // 木质敲击：body=正弦基频（快速下滑八度并指数衰减），noise=带通噪声瞬态（木头的"叩"感）
-function knock(c, t0, { body = 170, dur = 0.09, vol = 0.5, noiseHz = 600, noiseQ = 1.1, noiseVol = 0.33, noiseDur = 0.024 }) {
-  const t = c.currentTime + t0;
+function knock(c, now, offset, { body = 170, dur = 0.09, vol = 0.5, noiseHz = 600, noiseQ = 1.1, noiseVol = 0.33, noiseDur = 0.024 }) {
+  const t = now + offset;
   // 低频体
   const osc = c.createOscillator();
   osc.type = 'sine';
@@ -49,6 +54,10 @@ function knock(c, t0, { body = 170, dur = 0.09, vol = 0.5, noiseHz = 600, noiseQ
   g.gain.linearRampToValueAtTime(vol, t + 0.004); // 4ms 软攻，避免爆音
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   osc.connect(g).connect(c.destination);
+  osc.onended = () => {
+    try { osc.disconnect(); } catch { /* ignore */ }
+    try { g.disconnect(); } catch { /* ignore */ }
+  };
   osc.start(t);
   osc.stop(t + dur + 0.03);
   // 带通噪声瞬态
@@ -67,12 +76,20 @@ function knock(c, t0, { body = 170, dur = 0.09, vol = 0.5, noiseHz = 600, noiseQ
     ng.gain.setValueAtTime(noiseVol, t);
     ng.gain.exponentialRampToValueAtTime(0.001, t + noiseDur);
     src.connect(bp).connect(ng).connect(c.destination);
+    src.onended = () => {
+      try { src.disconnect(); } catch { /* ignore */ }
+      try { bp.disconnect(); } catch { /* ignore */ }
+      try { ng.disconnect(); } catch { /* ignore */ }
+    };
     src.start(t);
   }
 }
 
 export const sound = {
-  setEnabled(v) { enabled = v; },
+  setEnabled(v) {
+    enabled = Boolean(v);
+    if (!enabled) pending = null;
+  },
   isEnabled: () => enabled,
   // 在用户手势内解锁 AudioContext（iOS/移动端自动播放策略）：播放一段 1 采样的缓冲源并 resume，
   // 是 iOS 上最可靠的解锁方式。须由「能授予用户激活」的事件调用（见 main.js UNLOCK_EVENTS）。
@@ -84,6 +101,7 @@ export const sound = {
       const src = c.createBufferSource();
       src.buffer = c.createBuffer(1, 1, 22050); // 1 采样静音缓冲
       src.connect(c.destination);
+      src.onended = () => { try { src.disconnect(); } catch { /* ignore */ } };
       src.start(0);
       c.resume().then(flushPending).catch(() => { /* 本次事件无用户激活，留给下一次手势 */ });
       flushPending(); // 若本次同步即进入 running（桌面常见），立刻补播
@@ -92,31 +110,39 @@ export const sound = {
   },
   isReady: () => !!ctx && ctx.state === 'running',
   // 走子：单声闷实的木质"哒"
-  move: () => play((c) => knock(c, 0, { body: 175, dur: 0.085, vol: 0.5, noiseHz: 520, noiseVol: 0.3 })),
+  move: () => play((c) => {
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 175, dur: 0.08, vol: 0.5, noiseHz: 520, noiseVol: 0.3 });
+  }),
   // 吃子：先脆后沉的"嗒-咚"双击
   capture: () => play((c) => {
-    knock(c, 0, { body: 230, dur: 0.05, vol: 0.5, noiseHz: 1500, noiseQ: 0.9, noiseVol: 0.5, noiseDur: 0.018 });
-    knock(c, 0.022, { body: 125, dur: 0.1, vol: 0.5, noiseHz: 420, noiseVol: 0.22 });
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 230, dur: 0.05, vol: 0.5, noiseHz: 1500, noiseQ: 0.9, noiseVol: 0.5, noiseDur: 0.018 });
+    knock(c, now, 0.022, { body: 125, dur: 0.1, vol: 0.5, noiseHz: 420, noiseVol: 0.22 });
   }),
   // 易位：王、车两声连击
   castle: () => play((c) => {
-    knock(c, 0, { body: 165, dur: 0.075, vol: 0.42, noiseHz: 520, noiseVol: 0.26 });
-    knock(c, 0.095, { body: 150, dur: 0.09, vol: 0.48, noiseHz: 480, noiseVol: 0.28 });
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 165, dur: 0.075, vol: 0.42, noiseHz: 520, noiseVol: 0.26 });
+    knock(c, now, 0.095, { body: 150, dur: 0.09, vol: 0.48, noiseHz: 480, noiseVol: 0.28 });
   }),
   // 将军：落子 + 高频木鱼点（短促、克制，不带旋律感）
   check: () => play((c) => {
-    knock(c, 0, { body: 185, dur: 0.08, vol: 0.5, noiseHz: 560, noiseVol: 0.3 });
-    knock(c, 0.03, { body: 620, dur: 0.05, vol: 0.16, noiseHz: 2100, noiseQ: 2.5, noiseVol: 0.22, noiseDur: 0.014 });
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 185, dur: 0.08, vol: 0.5, noiseHz: 560, noiseVol: 0.3 });
+    knock(c, now, 0.03, { body: 620, dur: 0.05, vol: 0.16, noiseHz: 2100, noiseQ: 2.5, noiseVol: 0.22, noiseDur: 0.014 });
   }),
   // 升变：落子 + 轻微上扬点缀
   promote: () => play((c) => {
-    knock(c, 0, { body: 175, dur: 0.08, vol: 0.48, noiseHz: 520, noiseVol: 0.28 });
-    knock(c, 0.06, { body: 430, dur: 0.07, vol: 0.14, noiseHz: 1600, noiseQ: 2, noiseVol: 0.16, noiseDur: 0.015 });
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 175, dur: 0.08, vol: 0.48, noiseHz: 520, noiseVol: 0.28 });
+    knock(c, now, 0.06, { body: 430, dur: 0.07, vol: 0.14, noiseHz: 1600, noiseQ: 2, noiseVol: 0.16, noiseDur: 0.015 });
   }),
   // 终局：三声下行叩击收束
   gameEnd: () => play((c) => {
-    knock(c, 0, { body: 195, dur: 0.09, vol: 0.46, noiseHz: 560, noiseVol: 0.28 });
-    knock(c, 0.14, { body: 160, dur: 0.09, vol: 0.46, noiseHz: 500, noiseVol: 0.28 });
-    knock(c, 0.28, { body: 120, dur: 0.13, vol: 0.5, noiseHz: 420, noiseVol: 0.3 });
+    const now = c.currentTime;
+    knock(c, now, 0, { body: 195, dur: 0.09, vol: 0.46, noiseHz: 560, noiseVol: 0.28 });
+    knock(c, now, 0.14, { body: 160, dur: 0.09, vol: 0.46, noiseHz: 500, noiseVol: 0.28 });
+    knock(c, now, 0.28, { body: 120, dur: 0.13, vol: 0.5, noiseHz: 420, noiseVol: 0.3 });
   }),
 };
