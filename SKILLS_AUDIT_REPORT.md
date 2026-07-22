@@ -170,7 +170,7 @@
 | FIX-012 | `manifest.json`、`assets/icon-*`、`README.md` | 增加 192/512 PNG 与 maskable 图标，补 id/scope/lang/description，移除 portrait，明确无离线承诺 | PWA 安装一致性和诚实能力声明 | 可安装体验 | 真机安装外观需人工确认 |
 | FIX-013 | `VENDOR.md`、`licenses/GPL-3.0.txt`、`.supply-chain-risk-auditor/results.md`、`scripts/check.mjs` | 记录精确版本/哈希/来源和差异，加入 GPL 文本，并固定 12 个棋子 SVG 与 3 个 vendor 产物哈希 | 供应链可追溯 | 第三方分发 | 不能替代对应源码与法律审查 |
 | FIX-014 | `ChesSight-threat-model.md`、`security_best_practices_report.md` | 固化资产、边界、攻击路径、缓解、剩余风险 | 后续负责人可直接接手 | 安全治理 | 假设需要业务负责人确认 |
-| FIX-015 | `package.json`、`tests/**`、`scripts/check.mjs`、`.github/workflows/ci.yml` | 新增 31 个回归测试、语法/引用/SVG/WASM/vendor 检查和最小权限 CI，Action 固定完整 SHA | 防止修复回归 | 开发与 CI | 未加入重型浏览器 CI 依赖 |
+| FIX-015 | `package.json`、`tests/**`、`scripts/check.mjs`、`.github/workflows/ci.yml` | 新增 32 个回归测试、语法/引用/SVG/WASM/vendor 检查和最小权限 CI，Action 固定完整 SHA | 防止修复回归 | 开发与 CI | 未加入重型浏览器 CI 依赖 |
 | FIX-016 | `.gitignore` | 覆盖 `.env*`、`.dev.vars*`、`.wrangler/`、node_modules 和日志并放行模板 | 防止秘密/构建产物误提交 | Git 工作树 | `.agents/` 的归属刻意留给人工决定 |
 | FIX-017 | `package.json`、`README.md`、`tests/static-policy.test.js` | 先以失败测试复现缺失入口，再加入 `serve` script 并统一 README | 保证文档命令可直接执行 | 本地开发入口 | 无业务逻辑影响 |
 | FIX-018 | `js/board.js`、`css/style.css`、`tests/static-policy.test.js` | 有棋子的格子/备选槽禁用浏览器触控接管，空格保留滚动与缩放 | 同时保留拖子和页面手势 | 移动端触控 | 真机纵向拖子仍列人工复核 |
@@ -179,7 +179,7 @@
 
 | 验收编号 | 验收对象 | 验收标准 | 验收方法 | 验收结论 | 是否通过 | 备注 |
 |---|---|---|---|---|---|---|
-| ACC-001 | 全部自动回归 | 所有测试无失败且不访问生产网络 | `npm test` | 31/31 通过，0 fail | 是 | 最终报告后再次重跑 |
+| ACC-001 | 全部自动回归 | 所有测试无失败且不访问生产网络 | `npm test` | 32/32 通过，0 fail | 是 | 最终报告后再次重跑 |
 | ACC-002 | JS/JSON/资源/vendor | 语法、JSON、引用、SVG、WASM 魔数和固定哈希均有效 | `npm run check` | 13 个 JS/MJS、12 个棋子 SVG 和 3 个 vendor 固定哈希通过 | 是 | 任一固定产物变更会失败 |
 | ACC-003 | Worker 输入与安全边界 | 非法 Origin/body/schema/secret 及上游网络/非 SSE 失败受控；日志不含 payload/secret | `tests/worker-security.test.js` mock fetch/console | 7 项拒绝、上游失败、日志与限流测试通过 | 是 | 未等待真实 15 秒 timeout，未调用 DeepSeek |
 | ACC-004 | 解说队列 | 超时后继续、永久 4xx 不重试、SSE 尾块/多行完整、reader 释放 | `tests/commentary.test.js` fake reader/timer | 全部断言通过 | 是 | 有界一次瞬态重试 |
@@ -220,7 +220,7 @@
 # 8. 最终结论
 
 - **项目整体规范符合度：约 90%（本轮清单加权估算，不是第三方认证）**。核心前端、异步稳定性、Worker 输入边界、可访问性、PWA、测试、文档和本地开发安全已形成可运行闭环。
-- **本轮修复完成度：**32 项问题中 25 项完整修复、4 项部分缓解、3 项保留；所有可在不改变业务架构前提下安全自动修复的项目均已处理。31 项自动回归与静态门禁全部通过。
+- **本轮修复完成度：**32 项问题中 25 项完整修复、4 项部分缓解、3 项保留；所有可在不改变业务架构前提下安全自动修复的项目均已处理。32 项自动回归与静态门禁全部通过。
 - **当前剩余高风险：**公开 AI 代理的账户级滥用防护，以及 Stockfish JS glue 的来源/GPL 对应源码闭环。两项均不能仅靠本轮仓库内最小修改宣告解决。
 - **建议下一步动作：**先完成 Cloudflare 账户级限流/Turnstile/费用熔断和 Stockfish 许可来源确认；随后在 staging 做真实 SSE 集成、移动端 Lighthouse、真机 PWA 与 VoiceOver/NVDA 验收；最后再决定是否重构 `main.js` 及提交 `.agents/`。
 

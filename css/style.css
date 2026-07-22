@@ -218,6 +218,8 @@ body {
 /* ---------- 拖拽走子 ---------- */
 .drag-ghost {
   position: fixed;
+  left: 0; /* 位移全部走内联 transform（合成器路径），不再每帧写 left/top 触发布局 */
+  top: 0;
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -50%);
@@ -302,7 +304,7 @@ body {
   height: 16px;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #17210F; /* 深字压 accent 底达 6.9:1（白字仅 2.4:1 不过 AA）；与 .btn-primary 同款用色 */
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;

@@ -38,7 +38,9 @@ const MAX_RATE_KEYS = 5000;
 const UPSTREAM_TIMEOUT_MS = 15000;
 const UPSTREAM_URL = 'https://api.deepseek.com/chat/completions';
 const ALLOWED_FIELDS = new Set(['moves', 'lastMove', 'fen', 'opening']);
-const SAN = /^(?:O-O(?:-O)?|[KQRBN]?(?:[a-h]|[1-8]|[a-h][1-8])?x?[a-h][1-8](?:=[QRBN])?[+#]?)$/;
+// 易位分支同样允许将军/将杀后缀：chess.js 对造成将军的易位产出 'O-O+' / 'O-O-O#'，
+// 且前端传的是整盘历史，漏掉该后缀会使此后整局的解说请求全部 400。
+const SAN = /^(?:O-O(?:-O)?[+#]?|[KQRBN]?(?:[a-h]|[1-8]|[a-h][1-8])?x?[a-h][1-8](?:=[QRBN])?[+#]?)$/;
 
 class RequestProblem extends Error {
   constructor(status, reason) {
@@ -137,7 +139,7 @@ function isFenShape(fen) {
     if (count !== 8) return false;
   }
   return /^[wb]$/.test(fields[1])
-    && /^(?:-|K?Q?k?q?)$/.test(fields[2])
+    && /^(?:-|(?=[KQkq])K?Q?k?q?)$/.test(fields[2]) // 前瞻强制非空：易位段只能是 '-' 或至少一个权利字母
     && /^(?:-|[a-h][36])$/.test(fields[3])
     && /^\d+$/.test(fields[4])
     && /^[1-9]\d*$/.test(fields[5]);

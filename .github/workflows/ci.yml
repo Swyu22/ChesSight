@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main] # 限定主分支：避免同仓库 PR 分支 push+pull_request 双重跑
   pull_request:
 
 concurrency:
@@ -13,7 +14,11 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      # Windows 覆盖行尾/路径分隔符差异（曾因 CRLF checkout 使 vendor 哈希门失效）
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

@@ -35,7 +35,7 @@
         <button id="btn-done" class="btn btn-mini btn-primary">完成</button>
       </div>
     </aside>
-    <div id="board" class="board" aria-label="棋盘"></div>
+    <div id="board" class="board" aria-label="棋盘" tabindex="-1"></div><!-- tabindex=-1：skip-link 跳转后焦点可落在棋盘（Safari 不自动跟随），下一次 Tab 即进入漫游格 -->
     <div class="side">
     <div class="cards">
     <section class="panel menu-panel" aria-label="对局控制">

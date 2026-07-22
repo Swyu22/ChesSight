@@ -6,7 +6,8 @@
   "scripts": {
     "serve": "node scripts/serve.mjs",
     "test": "node --test --test-reporter=spec",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "check:update-hashes": "node scripts/update-hashes.mjs"
   },
   "engines": {
     "node": ">=22"

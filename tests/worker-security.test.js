@@ -83,6 +83,20 @@ test('accepts only constrained chess payloads and known opening IDs', async (t) 
   assert.equal((await worker.fetch(post({ opening: 'unknown', moves: ['e4'] }), env)).status, 400);
   assert.equal((await worker.fetch(post({ opening: 'italian', moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4'] }), env)).status, 200);
   assert.equal(calls, 1);
+
+  // 王车易位带将军/将杀后缀是 chess.js 的真实产物（如 'O-O+'），必须被 SAN 白名单接受，
+  // 否则含该着法的整盘历史此后每次解说请求都会 400（回归防护：见 SAN 正则易位分支）。
+  assert.equal((await worker.fetch(post({
+    moves: ['e4', 'e5', 'O-O+'],
+    lastMove: 'O-O+',
+    fen: VALID_FEN,
+  }), env)).status, 200);
+  assert.equal((await worker.fetch(post({
+    moves: ['O-O-O#'],
+    lastMove: 'O-O-O#',
+    fen: VALID_FEN,
+  }), env)).status, 200);
+  assert.equal(calls, 3);
 });
 
 test('uses a fixed upstream URL and does not leak the secret in responses', async (t) => {

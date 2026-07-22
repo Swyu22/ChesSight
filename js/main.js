@@ -505,6 +505,7 @@ async function maybeComputerMove() {
     cpuThinking = false;
     vsCpu = false;
     chkVsCpu.checked = false;
+    renderAll(); // 先刷新按钮态（提示/F1 因 opponentToMove 变化而恢复可用），再覆盖状态文案
     statusEl.textContent = '电脑引擎暂不可用，已切回手动对弈：' + (error?.message || '请稍后重试');
     statusEl.classList.add('alert');
     return;
@@ -734,8 +735,8 @@ function dragMove(e) {
     }
   }
   if (e.cancelable) e.preventDefault();
-  drag.ghost.style.left = e.clientX + 'px';
-  drag.ghost.style.top = e.clientY + 'px';
+  // transform 而非 left/top：合成器即可完成移动，高频 pointermove 下不再逐帧触发布局
+  drag.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
   const over = board.squareAt(e.clientX, e.clientY, drag.rect);
   if (drag.over !== over) {
     if (drag.over) {

@@ -94,3 +94,18 @@ test('vendor provenance and automated delivery checks are documented', async () 
   assert.match(vendor, /Stockfish\.js.*18/s);
   assert.match(workflow, /npm test/);
 });
+
+test('AI worker endpoint stays consistent between the CSP and the commentary client', async () => {
+  // CSP（index.html）与 ENDPOINT（js/commentary.js）是同一 Worker 域名的两份真相；
+  // 换域名漏改任何一处都会让解说在生产静默失效，此断言把两处锁定为一致。
+  const [html, commentary] = await Promise.all([read('index.html'), read('js/commentary.js')]);
+  const endpoint = commentary.match(/const ENDPOINT = '([^']+)'/)?.[1];
+  assert.ok(endpoint, 'js/commentary.js must declare const ENDPOINT');
+  const csp = html.match(/http-equiv="Content-Security-Policy"[^>]*content="([^"]+)"/)?.[1];
+  assert.ok(csp, 'index.html must declare a CSP meta tag');
+  const connectSrc = csp.match(/connect-src([^;]*)/)?.[1] ?? '';
+  assert.ok(
+    connectSrc.split(/\s+/).includes(new URL(endpoint).origin),
+    `CSP connect-src must list the commentary worker origin ${new URL(endpoint).origin}`,
+  );
+});
