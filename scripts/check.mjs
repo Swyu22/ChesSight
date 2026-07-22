@@ -50,18 +50,18 @@ const wasm = await readFile(fromRoot('js/vendor/stockfish-18-lite-single.wasm'))
 assert.deepEqual([...wasm.subarray(0, 4)], [0, 97, 115, 109], 'invalid WASM magic');
 
 const expectedHashes = new Map([
-  ['assets/pieces/bB.svg', 'ba67da76ce919addc60ecb8b46801def073dd54149b2c038a2d07a16d904d5e4'],
+  ['assets/pieces/bB.svg', '3ed2bb19629a70ddb8d0f971caa7251b0ab9bf01bcebaa4bac83f7aec0c6dd7a'],
   ['assets/pieces/bK.svg', '025eea92e0ef8eb1fd06b1c58d0d112948f08bf66cea6b5d003659569949b41c'],
-  ['assets/pieces/bN.svg', '735cc58315b123a56632d4877a6b976c827481fa97bf9a5c8f459ec969bc2549'],
+  ['assets/pieces/bN.svg', '9b836351ecb399c64163b5e5083d17b67c1b7273728a369847ba8b1332ca243d'],
   ['assets/pieces/bP.svg', '4413bf7c18a341f9723d97e6f92c985e30b6167b037e80842cea59b7541bb074'],
   ['assets/pieces/bQ.svg', '70191a3fbc729ef629661e2419a66ab8024c49277aab8ccae3a5ef61372ab802'],
   ['assets/pieces/bR.svg', '6abf617a9e26902e0734d85897c9ca55e29d7be2928142aa21032c38967e34ba'],
-  ['assets/pieces/wB.svg', '1d7beace24d455c923ee80d27125963eaf0287b956c5576dbf790c97ac0b97eb'],
+  ['assets/pieces/wB.svg', '30612a7aec659cd417d9bf258281c9d681896d7eacc3066fe1808cbb180d588a'],
   ['assets/pieces/wK.svg', '56f55c784843b1ac272b8745d740aa2a3e6c585513ef889978916f88e5d0b70b'],
-  ['assets/pieces/wN.svg', '5486791207156f7ae8b8678187648df45085d726334c2862e73b077dea00641e'],
+  ['assets/pieces/wN.svg', '3b5d668e3caf7856d3c9c496d73c4b36d095cfda482929097defd7dbade20bc4'],
   ['assets/pieces/wP.svg', 'cc7de30708dcec8f4d593a89d10893d5f9c063682039a1c441e86c44cf2096db'],
   ['assets/pieces/wQ.svg', 'b72b864e2a5b6c8f8afb7f260130c10e649ff063f4ef58190c00a35c56364327'],
-  ['assets/pieces/wR.svg', '4d42ab45afd862c704eb9b35317102d453a7a6b9b71d40f18958c8eadc829e4b'],
+  ['assets/pieces/wR.svg', '20d8dfd35151c288db1696630e16f5c25d6ead3f93dd65d776f162866b223dbb'],
   ['js/vendor/chess.js', '76c7c34f0e2e9ab076521a5d6fe786a9cce537bb1b6f29d32a9c9970b5b232d2'],
   ['js/vendor/stockfish-18-lite-single.js', '5243fd9b276cab7dfe3ad1d43ab9ead73568fac76468c614242977a210c4a391'],
   ['js/vendor/stockfish-18-lite-single.wasm', 'a8fbc05ec6920b56d7485826dcb02c5ffd2826bcbf751cf973046f237a9096f1'],

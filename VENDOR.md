@@ -11,20 +11,22 @@
 
 ### 棋子 SVG 固定 SHA-256
 
+所有 SVG 统一为 LF 行尾后计算（仓库已由 `.gitattributes` 强制 `eol=lf`；其中 bB/bN/wB/wN/wR 五个文件早期曾以 CRLF 入库，本轮已归一化并同步更新哈希，内容无其他差异）。
+
 | 文件 | SHA-256 |
 |---|---|
-| `bB.svg` | `ba67da76ce919addc60ecb8b46801def073dd54149b2c038a2d07a16d904d5e4` |
+| `bB.svg` | `3ed2bb19629a70ddb8d0f971caa7251b0ab9bf01bcebaa4bac83f7aec0c6dd7a` |
 | `bK.svg` | `025eea92e0ef8eb1fd06b1c58d0d112948f08bf66cea6b5d003659569949b41c` |
-| `bN.svg` | `735cc58315b123a56632d4877a6b976c827481fa97bf9a5c8f459ec969bc2549` |
+| `bN.svg` | `9b836351ecb399c64163b5e5083d17b67c1b7273728a369847ba8b1332ca243d` |
 | `bP.svg` | `4413bf7c18a341f9723d97e6f92c985e30b6167b037e80842cea59b7541bb074` |
 | `bQ.svg` | `70191a3fbc729ef629661e2419a66ab8024c49277aab8ccae3a5ef61372ab802` |
 | `bR.svg` | `6abf617a9e26902e0734d85897c9ca55e29d7be2928142aa21032c38967e34ba` |
-| `wB.svg` | `1d7beace24d455c923ee80d27125963eaf0287b956c5576dbf790c97ac0b97eb` |
+| `wB.svg` | `30612a7aec659cd417d9bf258281c9d681896d7eacc3066fe1808cbb180d588a` |
 | `wK.svg` | `56f55c784843b1ac272b8745d740aa2a3e6c585513ef889978916f88e5d0b70b` |
-| `wN.svg` | `5486791207156f7ae8b8678187648df45085d726334c2862e73b077dea00641e` |
+| `wN.svg` | `3b5d668e3caf7856d3c9c496d73c4b36d095cfda482929097defd7dbade20bc4` |
 | `wP.svg` | `cc7de30708dcec8f4d593a89d10893d5f9c063682039a1c441e86c44cf2096db` |
 | `wQ.svg` | `b72b864e2a5b6c8f8afb7f260130c10e649ff063f4ef58190c00a35c56364327` |
-| `wR.svg` | `4d42ab45afd862c704eb9b35317102d453a7a6b9b71d40f18958c8eadc829e4b` |
+| `wR.svg` | `20d8dfd35151c288db1696630e16f5c25d6ead3f93dd65d776f162866b223dbb` |
 
 ## 验证
 
