@@ -63,7 +63,7 @@ const expectedHashes = new Map([
   ['assets/pieces/wQ.svg', 'b72b864e2a5b6c8f8afb7f260130c10e649ff063f4ef58190c00a35c56364327'],
   ['assets/pieces/wR.svg', '20d8dfd35151c288db1696630e16f5c25d6ead3f93dd65d776f162866b223dbb'],
   ['js/vendor/chess.js', '76c7c34f0e2e9ab076521a5d6fe786a9cce537bb1b6f29d32a9c9970b5b232d2'],
-  ['js/vendor/stockfish-18-lite-single.js', '5243fd9b276cab7dfe3ad1d43ab9ead73568fac76468c614242977a210c4a391'],
+  ['js/vendor/stockfish-18-lite-single.js', '2278005057f381491f1c9bb3e44c9f5920b3a00bef9759e33cc6582769a1f1fe'],
   ['js/vendor/stockfish-18-lite-single.wasm', 'a8fbc05ec6920b56d7485826dcb02c5ffd2826bcbf751cf973046f237a9096f1'],
 ]);
 for (const [relative, expected] of expectedHashes) {

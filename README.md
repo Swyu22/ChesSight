@@ -70,4 +70,4 @@ npx wrangler deploy --dry-run
 - 分析引擎：[Stockfish.js](https://github.com/nmrugg/stockfish.js) 18 / [Stockfish](https://github.com/official-stockfish/Stockfish)，GPL-3.0。
 - 项目自有代码：MIT。
 
-精确版本、SHA-256、来源差异和发布合规待办记录在 [`VENDOR.md`](./VENDOR.md)。本地 Stockfish JavaScript glue 与 v18.0.0 同名官方发行文件并不一致，其对应源码与修改来源必须在正式再分发前由负责人确认。
+精确版本与 SHA-256 记录在 [`VENDOR.md`](./VENDOR.md)。本地 Stockfish JavaScript glue 与 wasm 均与 [v18.0.0 官方 release](https://github.com/nmrugg/stockfish.js/releases/tag/v18.0.0) 同名文件逐字节一致，由 `npm run check` 的固定哈希强制校验。

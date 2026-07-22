@@ -70,7 +70,7 @@ const board = createBoard(boardEl);
 const menuPanelEl = document.querySelector('.menu-panel');
 const cmtPanelEl = document.querySelector('.panel-side');
 function syncCmtHeight() {
-  if (window.innerWidth <= 1340) cmtPanelEl.style.height = '';
+  if (window.innerWidth <= 1600) cmtPanelEl.style.height = ''; // 与 css 断点保持一致
   else cmtPanelEl.style.height = menuPanelEl.offsetHeight + 'px';
 }
 let syncScheduled = false;

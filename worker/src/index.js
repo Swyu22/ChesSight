@@ -230,7 +230,12 @@ export default {
       return reply(status === 413 ? 'Payload Too Large' : 'Bad Request', status, cors);
     }
 
-    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]);
+    // 15s 超时仅覆盖「到响应头返回」（首字之前）：响应一旦开始，clearTimeout 解除闹钟，
+    // 流不再因超时被中途截断（产品决策 2026-07-23：开始出字就让它说完）。
+    // 流阶段的取消只跟随客户端断连（request.signal 仍在 signal 组合内）。
+    const timeoutCtl = new AbortController();
+    const timeoutId = setTimeout(() => timeoutCtl.abort(), UPSTREAM_TIMEOUT_MS);
+    const signal = AbortSignal.any([request.signal, timeoutCtl.signal]);
     const startedAt = Date.now();
     let upstream;
     try {
@@ -254,6 +259,7 @@ export default {
         }),
       });
     } catch (error) {
+      clearTimeout(timeoutId);
       logEvent('upstream_failed', requestId, {
         reason: signal.aborted ? 'aborted_or_timeout' : 'network',
         status: 502,
@@ -261,6 +267,7 @@ export default {
       });
       return reply('Upstream error', 502, cors);
     }
+    clearTimeout(timeoutId); // 响应头已到：解除首字超时，流式阶段不再截断
 
     const upstreamType = upstream.headers.get('Content-Type') || '';
     if (!upstream.ok || !upstream.body || !upstreamType.toLowerCase().startsWith('text/event-stream')) {

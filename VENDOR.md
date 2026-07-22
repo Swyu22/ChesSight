@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | `js/vendor/chess.js` | chess.js 1.4.0 / BSD-2-Clause | [npm 发行包](https://www.npmjs.com/package/chess.js/v/1.4.0) 的 `dist/esm/chess.js` | `76c7c34f0e2e9ab076521a5d6fe786a9cce537bb1b6f29d32a9c9970b5b232d2` | 与上游发行物逐字节一致；许可正文位于文件头。 |
 | `js/vendor/stockfish-18-lite-single.wasm` | Stockfish.js 18.0.0 / GPL-3.0 | [v18.0.0 release](https://github.com/nmrugg/stockfish.js/releases/tag/v18.0.0) | `a8fbc05ec6920b56d7485826dcb02c5ffd2826bcbf751cf973046f237a9096f1` | 与上游 release asset 逐字节一致。 |
-| `js/vendor/stockfish-18-lite-single.js` | Stockfish.js 18 系列 / GPL-3.0 | 文件头指向 [nmrugg/stockfish.js](https://github.com/nmrugg/stockfish.js) | `5243fd9b276cab7dfe3ad1d43ab9ead73568fac76468c614242977a210c4a391` | **需人工确认来源**：与 v18.0.0 同名 release asset（SHA-256 `2278005057f381491f1c9bb3e44c9f5920b3a00bef9759e33cc6582769a1f1fe`）不一致。不得将本表解读为已完成 Corresponding Source 合规。 |
+| `js/vendor/stockfish-18-lite-single.js` | Stockfish.js 18.0.0 / GPL-3.0 | [v18.0.0 release](https://github.com/nmrugg/stockfish.js/releases/tag/v18.0.0) 同名 asset | `2278005057f381491f1c9bb3e44c9f5920b3a00bef9759e33cc6582769a1f1fe` | 2026-07-23 已用官方 release asset 覆盖此前来源不明的本地副本，与上游逐字节一致（历史差异见 git 记录）；Corresponding Source 即上游仓库对应 tag。 |
 | `assets/pieces/*.svg`、图标中的马形 | cburnett / CC-BY-SA 3.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces) | 12 个 SVG 的固定哈希见下表并由 `scripts/check.mjs` 强制校验 | 初次审计逐文件比对 Wikimedia cburnett 原文件一致；页面页脚与 README 保留作者、来源及许可链接。 |
 
 ### 棋子 SVG 固定 SHA-256
@@ -38,5 +38,5 @@ shasum -a 256 js/vendor/chess.js js/vendor/stockfish-18-lite-single.js js/vendor
 ## 分发注意事项
 
 - 项目自有源码为 MIT；第三方文件继续受其各自许可约束。
-- Stockfish/Stockfish.js 为 GPL-3.0；许可全文保存在 `licenses/GPL-3.0.txt`。发布负责人需要确认本地 JavaScript glue 的精确源码、修改记录、构建方式和 Corresponding Source 交付方式；这是发布阻断型人工确认项，本文件不构成法律意见。
+- Stockfish/Stockfish.js 为 GPL-3.0；许可全文保存在 `licenses/GPL-3.0.txt`。本地 glue 与 wasm 均与 [v18.0.0 官方 release](https://github.com/nmrugg/stockfish.js/releases/tag/v18.0.0) 同名 asset 逐字节一致（哈希门强制校验），Corresponding Source 由上游仓库对应 tag 提供；本文件不构成法律意见。
 - `js/vendor/chess.js` 文件末尾引用了未随仓库分发的 source map；不影响运行，但调试时会出现缺失映射，后续可补同版本官方 map 或在重新 vendor 时移除声明并更新哈希。

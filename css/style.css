@@ -576,7 +576,7 @@ footer {
 footer a { color: var(--text-dim); }
 
 /* ---------- 窄屏 / 移动端：Logo 顶部居中入流，上棋盘、下面板 ---------- */
-@media (max-width: 1340px) {
+@media (max-width: 1600px) { /* 断点上移（产品决策 2026-07-23）：1366/1440/1536 笔记本走竖排布局，消除 1341px 棋盘骤缩断崖 */
   :root { --board-size: min(94vw, 70vh); }
   .app, .app.setup { --board-size: min(94vw, 70vh); flex-direction: column; align-items: center; padding: 12px; min-height: auto; gap: 14px; }
   /* 摊平 .side / .cards 两层容器，使三张卡片与棋盘同为 .app 的 flex 项，才能用 order 重排 */

@@ -21,9 +21,9 @@ test('responsive policy has no 1025px board-size cliff or forced orientation loc
     read('js/main.js'),
     read('js/board.js'),
   ]);
-  assert.match(css, /@media \(max-width: 1340px\)/);
+  assert.match(css, /@media \(max-width: 1600px\)/);
   assert.doesNotMatch(main, /orientation\?\.lock|orientation\.lock/);
-  assert.match(main, /innerWidth <= 1340/);
+  assert.match(main, /innerWidth <= 1600/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(board, /classList\.toggle\('has-piece',\s*Boolean\(cell\)\)/);
   assert.match(css, /\.square\.has-piece\s*\{\s*touch-action:\s*none/);
