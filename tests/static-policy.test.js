@@ -6,7 +6,9 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('HTML preserves zoom, uses local assets, and exposes landmarks and AI disclosure', async () => {
   const html = await read('index.html');
-  assert.doesNotMatch(html, /user-scalable\s*=\s*no|maximum-scale\s*=\s*1/);
+  // 产品决策（2026-07-23）：移动端锁定缩放（负责人在无障碍取舍上选择锁定）
+  assert.match(html, /user-scalable=no/);
+  assert.match(html, /maximum-scale=1/);
   assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.match(html, /class="skip-link"/);
   assert.match(html, /<main\b/);
@@ -76,8 +78,11 @@ test('safety markers use uniform state-colored outlines and continuous hints sta
   )?.[0] ?? '';
 
   assert.match(safetyStyles, /border:\s*6px solid var\(--state-color\)/);
-  assert.doesNotMatch(safetyStyles, /#(?:000|111)(?:000|111)?\b|\bblack\b/i);
-  assert.doesNotMatch(safetyStyles, /border-(?:style|width)|box-shadow|\b(?:double|dashed)\b/);
+  // 产品决策（2026-07-23）：状态色带由 1px 深色分离线（--safe-edge）包夹，
+  // 保证任意格底上 ≥3:1 非文本对比；线型差异（double/dashed）仍禁止。
+  assert.match(safetyStyles, /outline:\s*1px solid var\(--safe-edge\)/);
+  assert.match(safetyStyles, /box-shadow:\s*inset 0 0 0 1px var\(--safe-edge\)/);
+  assert.doesNotMatch(safetyStyles, /border-(?:style|width)|\b(?:double|dashed)\b/);
   assert.match(safetyStyles, /\.square\.safety-attacked\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-red\);\s*\}/);
   assert.match(safetyStyles, /\.square\.safety-defended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-green\);\s*\}/);
   assert.match(safetyStyles, /\.square\.safety-undefended\s+\.ly\.safety\s*\{\s*--state-color:\s*var\(--safe-yellow\);\s*\}/);

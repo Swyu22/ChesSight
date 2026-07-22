@@ -941,6 +941,13 @@ btnUndo.addEventListener('click', () => {
   clearCommentary(); // 回退：清空与已撤销棋谱关联的条目和待解说队列
   chess.undo();
   history.undo();
+  // 与电脑对弈：成对撤销（电脑的应着 + 你的一步）。只撤一步时轮次仍在电脑一方，
+  // afterPositionChange 会让引擎立即重走刚被撤销的那步，悔棋等于无效。
+  // 若撤一步后轮到你方（引擎尚未应着，如思考中悔棋），则保持单步撤销。
+  if (vsCpu && chess.turn() !== board.getOrientation() && history.canUndo()) {
+    chess.undo();
+    history.undo();
+  }
   clearSelection();
   clearHint();
   sound.move();

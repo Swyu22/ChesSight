@@ -16,6 +16,9 @@
   --safe-red: #E02828;
   --safe-green: #2FB344;
   --safe-yellow: #E8A800;
+  /* 安全标记 1px 分离线：#1F1F1F 对深格 4.8:1、浅格 13.7:1，对三种状态色均 ≥3.5:1，
+     使彩框在任意格底上满足 WCAG 1.4.11 非文本对比 ≥3:1（产品决策 2026-07-23） */
+  --safe-edge: #1F1F1F;
   /* 智能自适应：高度撑满上下沿；同时预留足够左右留白，使左上角 Logo 不与棋盘重叠、
      整块横向居中（右侧栏 620 + 左侧 Logo 留白 + 间距 ≈ 1020）。永不出现滚动。
      大屏由高度封顶（不受此项影响），窄屏则按此收缩棋盘让出 Logo 空间。 */
@@ -166,6 +169,11 @@ body {
   display: block;
   border-radius: 4px;
   border: 6px solid var(--state-color);
+  /* 内外各 1px 深色分离线（外缘 outline 内缩 + 内缘 inset 阴影）：
+     状态色带被 ≥3:1 的边界包夹，深/浅格上均清晰可辨（WCAG 1.4.11） */
+  outline: 1px solid var(--safe-edge);
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px var(--safe-edge);
 }
 .square.safety-attacked   .ly.safety { --state-color: var(--safe-red); }
 .square.safety-defended   .ly.safety { --state-color: var(--safe-green); }

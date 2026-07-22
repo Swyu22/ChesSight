@@ -162,7 +162,7 @@
 | FIX-004 | `js/commentary.js` | 可注入客户端、总/空闲超时、50 项队列、瞬态重试、Retry-After、完整 SSE parser、finally 清理、取消回调 | 防止挂死、泄漏和错误重试 | AI 解说 | 超时时间需在真实网络调优 |
 | FIX-005 | `js/engine.js` | 总初始化 deadline 覆盖 WASM、reader 取消/释放、Worker error/messageerror、搜索清理与 reset | 防止引擎永久挂起 | Stockfish 提示/电脑模式 | 排队任务尚无调用方 AbortSignal |
 | FIX-006 | `js/sound.js` | AudioContext 安全降级、禁用清 pending、统一 currentTime、所有节点 onended disconnect | 避免异常、补播和资源累积 | 所有音效 | 无听感自动化，音色需人工试听 |
-| FIX-007 | `index.html`、`css/style.css` | 恢复缩放、移除方向锁、系统字体/CSP、skip link、landmark、1340px 响应式、对比度与当时的线型状态（后续产品变更已取消线型差异） | WCAG、隐私和窄屏可用性 | 全页面 | CSP 保留 `unsafe-inline` 以兼容现有动态样式 |
+| FIX-007 | `index.html`、`css/style.css` | 恢复缩放、移除方向锁、系统字体/CSP、skip link、landmark、1340px 响应式、对比度与当时的线型状态（后续产品变更已取消线型差异；2026-07-23 负责人拍板**重新锁定移动端缩放**，安全标记改为深色分离线方案达 3:1） | WCAG、隐私和窄屏可用性 | 全页面 | CSP 保留 `unsafe-inline` 以兼容现有动态样式 |
 | FIX-008 | `js/board.js` | 建立 8×8 ARIA row/gridcell、翻转索引、动态名称、selected 和装饰 SVG 隐藏 | 让屏幕阅读器理解核心棋盘 | 棋盘渲染 | 尚未做真实读屏软件人工测试 |
 | FIX-009 | `js/main.js` | 摆棋托盘 button 化；支持键盘选择、放置、移动、删除、Escape；修复初始局面回合 | 消除 drag-only 并修复浏览器发现的状态 Bug | 自由摆棋 | 复杂摆棋流程仍建议人工探索 |
 | FIX-010 | `js/main.js` | 升变 dialog 语义、完整按钮名、首项焦点、Tab trap、Escape 和焦点恢复 | 修复焦点与名称 | 兵升变 | 未改变原有升变业务选择 |
