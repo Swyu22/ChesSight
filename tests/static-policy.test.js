@@ -89,7 +89,11 @@ test('safety markers use uniform state-colored outlines and continuous hints sta
   assert.match(css, /\.square\.sel \.ly\.sel\s*\{[^}]*inset:\s*7px/s);
   assert.match(html, /<input\s+type="checkbox"\s+id="chk-auto"\s+checked>/);
   assert.match(main, /let autoHint = true;/);
-  assert.match(main, /renderAll\(\);\s*if \(autoHint\) runEngineHint\(\);/);
+  // 产品决策（2026-07-23）：开局首着不预跑引擎——载入时不再调用 runEngineHint，
+  // 持续提示仅在棋谱非空时自动分析；「电脑自己对弈」默认不勾选
+  assert.doesNotMatch(main, /renderAll\(\);\s*if \(autoHint\) runEngineHint\(\);/);
+  assert.match(main, /autoHint && chess\.history\(\)\.length > 0\) runEngineHint\(\);/);
+  assert.match(html, /<input type="checkbox" id="chk-selfplay">/);
 });
 
 test('vendor provenance and automated delivery checks are documented', async () => {

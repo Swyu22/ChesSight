@@ -21,6 +21,7 @@ let thinking = false;
 let autoHint = true; // 持续提示默认开启：载入后立即分析初始局面
 let showCommentary = true; // AI 实时解说：每步走完自动解说（默认开启）
 let vsCpu = false; // 与电脑对弈：对方由 Stockfish 自动应对（默认关闭）
+let selfPlay = false; // 电脑自己对弈：双方均由 Stockfish 走（默认关闭，与 vsCpu 互斥）
 let cpuThinking = false;
 
 // 自由摆棋模式
@@ -44,6 +45,7 @@ const btnSound = $id('btn-sound');
 const btnHint = $id('btn-hint');
 const chkAuto = $id('chk-auto');
 const chkVsCpu = $id('chk-vscpu');
+const chkSelfPlay = $id('chk-selfplay');
 const btnSetup = $id('btn-setup');
 const trayEl = $id('tray');
 const trayPieces = $id('tray-pieces');
@@ -262,9 +264,9 @@ function renderAll() {
     statusEl.classList.toggle('alert', chess.inCheck() || isLocked());
   }
   btnNew.disabled = setupMode;
-  btnUndo.disabled = setupMode || !history.canUndo();
-  btnRedo.disabled = setupMode || !history.canRedo();
-  btnHint.disabled = setupMode || thinking || isLocked() || opponentToMove();
+  btnUndo.disabled = setupMode || !history.canUndo() || selfPlay;
+  btnRedo.disabled = setupMode || !history.canRedo() || selfPlay;
+  btnHint.disabled = setupMode || thinking || isLocked() || opponentToMove() || selfPlay;
   openingSelect.disabled = setupMode;
   syncCmtHeight();  // 立即同步
   scheduleSync();   // 下一帧回流后补一次（提示换行等异步高度变化）
@@ -452,7 +454,7 @@ function nonRepeatingMoves() {
 const parseUci = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
 
 async function runEngineHint() {
-  if (thinking || setupMode || isLocked() || opponentToMove()) return; // 对方回合不为「非你方」局面跑提示
+  if (thinking || setupMode || isLocked() || opponentToMove() || selfPlay) return; // 对方回合/自弈中不跑提示
   thinking = true;
   renderAll();
   hintEl.hidden = false;
@@ -494,8 +496,66 @@ function opponentToMove() {
   return vsCpu && !setupMode && !isLocked() && chess.turn() !== board.getOrientation();
 }
 
+// 电脑是否该走当前回合：自弈 = 任意回合（非摆棋/非终局/非判和）；对弈 = 对方回合
+function computerTurnActive() {
+  return selfPlay ? (!setupMode && !isLocked() && !chess.isDraw()) : opponentToMove();
+}
+
+// ---- 电脑落子过场动画：黄色箭头预告 1.2s → 棋子拖拽滑行 1.8s（共 3s，产品决策 2026-07-23）----
+const CPU_ANIM_ARROW_MS = 1200;
+const CPU_ANIM_SLIDE_MS = 1800;
+let cpuAnim = null; // 在途动画句柄；任何局面变更类操作调用 cancelCpuAnim() 作废
+
+function cancelCpuAnim() {
+  if (cpuAnim) cpuAnim.cancel();
+}
+
+// 播放「箭头→拖拽滑行」过场，resolve true=完整播完 / false=被取消。
+// 期间不改动 chess 状态；箭头画在独立 SVG 组（不被重绘冲掉），滑行用悬浮子代演、源格棋子隐藏。
+// 系统开启「减少动态效果」时退化为仅箭头预告（不滑行），总时长不变。
+function animateComputerMove(from, to) {
+  return new Promise((resolve) => {
+    const fromEl = boardEl.querySelector(`[data-square="${from}"]`);
+    const toEl = boardEl.querySelector(`[data-square="${to}"]`);
+    const img = fromEl && fromEl.querySelector('.piece');
+    if (!fromEl || !toEl || !img) { resolve(true); return; } // 兜底：异常时不动画直接落子
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    board.drawAnimArrow(from, to);
+    let ghost = null;
+    let timer = 0;
+    const cleanup = () => {
+      clearTimeout(timer);
+      board.clearAnimArrow();
+      if (ghost) ghost.remove();
+      img.style.visibility = '';
+      cpuAnim = null;
+    };
+    cpuAnim = { cancel() { cleanup(); resolve(false); } };
+    const finish = () => { cleanup(); resolve(true); };
+    const startSlide = () => {
+      if (reduced) { timer = setTimeout(finish, CPU_ANIM_SLIDE_MS); return; }
+      ghost = document.createElement('img');
+      ghost.src = img.getAttribute('src');
+      ghost.className = 'cpu-anim-ghost';
+      ghost.style.left = fromEl.offsetLeft + 'px';
+      ghost.style.top = fromEl.offsetTop + 'px';
+      ghost.style.width = fromEl.offsetWidth + 'px';
+      ghost.style.height = fromEl.offsetHeight + 'px';
+      ghost.style.transitionDuration = CPU_ANIM_SLIDE_MS + 'ms';
+      boardEl.appendChild(ghost);
+      img.style.visibility = 'hidden'; // 滑行期间源格棋子由悬浮子代演
+      // 双 rAF：确保初始位置先完成一次布局，transform 过渡才会生效
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (ghost) ghost.style.transform = `translate(${toEl.offsetLeft - fromEl.offsetLeft}px, ${toEl.offsetTop - fromEl.offsetTop}px)`;
+      }));
+      timer = setTimeout(finish, CPU_ANIM_SLIDE_MS + 60); // 计时器收尾，不依赖 transitionend
+    };
+    timer = setTimeout(startSlide, CPU_ANIM_ARROW_MS);
+  });
+}
+
 async function maybeComputerMove() {
-  if (cpuThinking || !opponentToMove()) return;
+  if (cpuThinking || !computerTurnActive()) return;
   cpuThinking = true;
   const requestFen = chess.fen();
   let uci;
@@ -505,18 +565,24 @@ async function maybeComputerMove() {
     cpuThinking = false;
     vsCpu = false;
     chkVsCpu.checked = false;
-    renderAll(); // 先刷新按钮态（提示/F1 因 opponentToMove 变化而恢复可用），再覆盖状态文案
+    selfPlay = false;
+    chkSelfPlay.checked = false;
+    renderAll(); // 先刷新按钮态（提示/F1 因模式退出恢复可用），再覆盖状态文案
     statusEl.textContent = '电脑引擎暂不可用，已切回手动对弈：' + (error?.message || '请稍后重试');
     statusEl.classList.add('alert');
     return;
   }
+  // 期间局面/开关/视角可能已变，重新校验后再进动画
+  if (chess.fen() !== requestFen || !computerTurnActive()) { cpuThinking = false; return; }
+  if (!uci || uci === '(none)') { cpuThinking = false; return; }
+  const move = parseUci(uci);
+  // 动画期间 cpuThinking 保持 true（防止翻转/勾选等入口重入）；结束后再校验一次局面
+  const played = await animateComputerMove(move.from, move.to);
   cpuThinking = false;
-  // 期间局面/开关/视角可能已变，重新校验后再落子
-  if (chess.fen() !== requestFen || !opponentToMove()) return;
-  if (!uci || uci === '(none)') return;
+  if (!played || chess.fen() !== requestFen || !computerTurnActive()) return;
   let made;
   try {
-    made = chess.move(parseUci(uci));
+    made = chess.move(move);
   } catch {
     return;
   }
@@ -528,12 +594,26 @@ async function maybeComputerMove() {
   afterPositionChange();
 }
 
-// 每次局面变化后的统一出口：重绘 → 若轮到电脑则自动应对，否则持续提示自动分析
+// 每次局面变化后的统一出口：重绘 → 自弈续走 / 对方回合电脑应对 / 持续提示分析
 function afterPositionChange() {
   renderAll();
+  if (selfPlay && !setupMode && (isLocked() || chess.isDraw())) {
+    // 自弈到达终局（将杀/逼和/可判和即停，产品决策）：自动取消勾选，恢复人工控制
+    selfPlay = false;
+    chkSelfPlay.checked = false;
+    renderAll();
+    return;
+  }
   if (setupMode || isLocked()) return;
+  if (selfPlay) { maybeComputerMove(); return; } // 自弈：双方连续走
   if (opponentToMove()) maybeComputerMove(); // 电脑回合：自动走子（无需再单独提示）
-  else if (autoHint) runEngineHint();          // 你的回合：显示最佳走法提示
+  else if (autoHint && chess.history().length > 0) runEngineHint(); // 你的回合：开局首着不预跑（产品决策）
+}
+
+// 取消在途动画后重进电脑走子循环。用宏任务延后：先让被取消的 maybeComputerMove
+// 在微任务里走完收尾（释放 cpuThinking），再判断是否续走。
+function kickComputerLoop() {
+  setTimeout(() => { if (!cpuThinking) maybeComputerMove(); }, 0);
 }
 
 // ---- 摆棋模式 ----
@@ -549,6 +629,7 @@ const boardSnapshot = (c) => c.board().map((row) => row.map((x) => (x ? { type: 
 
 function enterSetup() {
   abortPromotion();
+  cancelCpuAnim(); // 摆棋暂停一切电脑走子；完成摆棋后由 afterPositionChange 恢复
   setupMode = true;
   setupBoard = boardSnapshot(chess);
   removed = emptyCounts();
@@ -686,7 +767,7 @@ boardEl.addEventListener('pointerdown', (e) => {
   }
 
   if (isLocked()) return;
-  if (opponentToMove()) return; // 与电脑对弈：对方回合忽略棋盘输入，不代替电脑走子
+  if (opponentToMove() || selfPlay) return; // 与电脑对弈的对方回合 / 电脑自弈中：忽略棋盘输入
   const piece = chess.get(sq);
   if (piece && piece.color === chess.turn()) {
     const wasSelected = selected === sq;
@@ -862,7 +943,7 @@ function activateSquare(sq) {
     }
     return;
   }
-  if (isLocked() || opponentToMove()) return; // 终局 / 对方回合：键盘不走子
+  if (isLocked() || opponentToMove() || selfPlay) return; // 终局 / 对方回合 / 自弈中：键盘不走子
   const piece = chess.get(sq);
   if (piece && piece.color === chess.turn()) {
     if (selected === sq) clearSelection();
@@ -912,6 +993,7 @@ setKbFocus('e1', false); // 初始令一格可 Tab 达，但不抢焦点
 // ---- 面板按钮 ----
 function resetTo(fen) {
   abortPromotion();
+  cancelCpuAnim(); // 局面整体更换：作废在途电脑落子动画
   if (fen) chess.load(fen);
   else chess.reset();
   history.reset(chess.fen());
@@ -929,15 +1011,17 @@ btnNew.addEventListener('click', () => {
 
 btnFlip.addEventListener('click', () => {
   abortPromotion(); // 翻转后选子框坐标失效，直接取消
+  cancelCpuAnim(); // 翻转后格子几何变化，在途动画路径失效：作废后由循环重算
   board.setOrientation(board.getOrientation() === 'w' ? 'b' : 'w');
   renderAll();
-  // 翻转即交换阵营：若翻转后轮到（新的）对方，电脑接手继续走
-  if (opponentToMove()) maybeComputerMove();
+  // 翻转即交换阵营：若翻转后轮到（新的）对方（或自弈中），电脑接手继续走
+  kickComputerLoop();
 });
 
 btnUndo.addEventListener('click', () => {
   if (setupMode || !history.canUndo()) return;
   abortPromotion();
+  cancelCpuAnim(); // 悔棋作废在途的电脑落子动画（结果被局面校验拦下）
   clearCommentary(); // 回退：清空与已撤销棋谱关联的条目和待解说队列
   chess.undo();
   history.undo();
@@ -959,6 +1043,7 @@ btnRedo.addEventListener('click', () => {
   const entry = history.redo();
   if (!entry) return;
   abortPromotion();
+  cancelCpuAnim();
   const mv = chess.move(entry.san); // 重放存储的 SAN，保持引擎内部历史一致
   clearSelection();
   clearHint();
@@ -987,13 +1072,47 @@ btnHint.addEventListener('click', runEngineHint);
 
 chkAuto.addEventListener('change', () => {
   autoHint = chkAuto.checked;
-  if (autoHint && !setupMode && !isLocked() && !opponentToMove()) runEngineHint();
+  // 与「开局首着不预跑」一致：棋谱为空时勾选也不立即分析
+  if (autoHint && !setupMode && !isLocked() && !opponentToMove() && !selfPlay && chess.history().length > 0) runEngineHint();
 });
 
 chkVsCpu.addEventListener('change', () => {
   vsCpu = chkVsCpu.checked;
-  // 勾选时若正轮到对方，电脑立即接手；取消时什么都不做（你继续手动走）
-  if (vsCpu && opponentToMove()) maybeComputerMove();
+  if (vsCpu && selfPlay) { // 与「电脑自己对弈」互斥
+    selfPlay = false;
+    chkSelfPlay.checked = false;
+    cancelCpuAnim();
+  }
+  if (!vsCpu) cancelCpuAnim(); // 取消勾选：作废在途应着动画，你继续手动走
+  clearHint();
+  renderAll();
+  // 勾选时若正轮到对方，电脑立即接手
+  if (vsCpu) kickComputerLoop();
+});
+
+chkSelfPlay.addEventListener('change', () => {
+  selfPlay = chkSelfPlay.checked;
+  if (selfPlay) {
+    if (vsCpu) { // 与「与电脑对弈」互斥
+      vsCpu = false;
+      chkVsCpu.checked = false;
+    }
+    cancelCpuAnim();
+    clearSelection();
+    clearHint();
+    abortPromotion();
+    if (isLocked() || chess.isDraw()) { // 当前已是终局/可判和局面：不开动，就地弹回
+      selfPlay = false;
+      chkSelfPlay.checked = false;
+      renderAll();
+      return;
+    }
+    renderAll(); // 锁定输入与按钮态
+    kickComputerLoop();
+  } else {
+    cancelCpuAnim(); // 立刻停：在途动画作废，结果被 computerTurnActive 校验拦下
+    renderAll();
+  }
 });
 
 // F1 快捷键触发引擎提示（拦截浏览器默认帮助）
@@ -1043,4 +1162,5 @@ window.app = {
 };
 
 renderAll();
-if (autoHint) runEngineHint(); // 默认开启持续提示：载入即分析初始局面
+// 开局第一步不自动分析（产品决策 2026-07-23）：棋谱为空时不预跑引擎，走出第一步后
+// 「持续提示」才开始工作；手动 💡/F1 随时可用。附带收益：首屏不再下载 7MB 引擎。

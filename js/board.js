@@ -69,6 +69,9 @@ export function createBoard(container) {
   container.appendChild(svg);
   const gXray = svg.querySelector('.g-xray');
   const gHint = svg.querySelector('.g-hint');
+  // 电脑落子过场箭头：独立于 render() 生命周期的图层（复用提示箭头样式），重绘不冲掉
+  const gAnim = document.createElementNS(SVGNS, 'g');
+  svg.appendChild(gAnim);
 
   function center(name) {
     const f = FILES.indexOf(name[0]);
@@ -220,5 +223,13 @@ export function createBoard(container) {
     }
   }
 
-  return { render, setOrientation, getOrientation: () => orientation, squareAt };
+  function drawAnimArrow(from, to) {
+    gAnim.replaceChildren();
+    drawLine(gAnim, from, to, 'hint-arrow', 'ah-hint', 0.42);
+  }
+  function clearAnimArrow() {
+    gAnim.replaceChildren();
+  }
+
+  return { render, setOrientation, getOrientation: () => orientation, squareAt, drawAnimArrow, clearAnimArrow };
 }

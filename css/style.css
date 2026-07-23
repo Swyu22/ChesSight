@@ -236,6 +236,16 @@ body {
 .square.drag-origin .piece { opacity: 0.35; }
 .square.drag-over { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.8); }
 
+/* 电脑落子过场：悬浮拖拽子（箭头预告后从源格滑向目标格；transform 走合成器路径） */
+.cpu-anim-ghost {
+  position: absolute;
+  z-index: 5; /* 高于棋子/徽章，低于升变选子框(40) */
+  pointer-events: none;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.33, 0, 0.2, 1);
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.45));
+}
+
 /* ---------- 控制面板 ---------- */
 .panel {
   background: var(--panel);
