@@ -27,8 +27,9 @@ const OPENINGS = new Map([
 const SYSTEM_PROMPT =
   '你是一位国际象棋解说员，用中文解说，风格清晰而富有诗意。' +
   '针对给出的最新一步棋，点出它的意图、制造的威胁或与前着的呼应。' +
-  '棋谱每步已标注（白）/（黑）执子方，并附有双方现存子力清单；' +
-  '解说必须与这些标注一致：不得说错棋子颜色归属，不得提及清单中不存在或已被吃掉的棋子。' +
+  '棋谱每步已标注（白）/（黑）执子方，并附有双方现存子力及其所在格的清单；' +
+  '解说必须与这些标注一致：不得说错棋子颜色归属，不得提及清单中不存在或已被吃掉的棋子，' +
+  '不得把棋子说在清单标注之外的格子上。' +
   '严格限制在两句话以内（不超过60字为佳）。' +
   '直接输出解说正文：不要复述着法记号、不要编号、不要引号、不要提及你是AI或解说员。';
 
@@ -193,21 +194,29 @@ function fmtMoves(moves) {
 const PIECE_CN = { k: '王', q: '后', r: '车', b: '象', n: '马', p: '兵' };
 const PIECE_ORDER = ['k', 'q', 'r', 'b', 'n', 'p'];
 
-// 从 FEN 棋盘段统计双方现存子力（FEN 已过 isFenShape 校验），
-// 供模型对照实况，避免解说到已被吃掉或不存在的棋子。
+// 从 FEN 棋盘段生成带格位的双方子力清单（FEN 已过 isFenShape 校验），
+// 供模型对照实况：既防说错归属/数量，也防把棋子说到不存在的格子上
+// （如把已随吃子离场的 e4 兵当作仍在 e4）。同型多子以 / 连接，如 车a1/h1。
 function materialFromFen(fen) {
-  const counts = { w: {}, b: {} };
-  for (const char of fen.split(' ')[0]) {
-    if (!/[a-z]/i.test(char)) continue;
-    const side = char === char.toUpperCase() ? 'w' : 'b';
-    const type = char.toLowerCase();
-    counts[side][type] = (counts[side][type] || 0) + 1;
+  const bySide = { w: new Map(), b: new Map() };
+  const ranks = fen.split(' ')[0].split('/');
+  for (let r = 0; r < 8; r++) {
+    let file = 0;
+    for (const char of ranks[r]) {
+      if (/[1-8]/.test(char)) { file += Number(char); continue; }
+      const side = char === char.toUpperCase() ? 'w' : 'b';
+      const type = char.toLowerCase();
+      const squares = bySide[side].get(type) || [];
+      squares.push('abcdefgh'[file] + (8 - r));
+      bySide[side].set(type, squares);
+      file++;
+    }
   }
   const list = (side) => PIECE_ORDER
-    .filter((type) => counts[side][type])
-    .map((type) => PIECE_CN[type] + (counts[side][type] > 1 ? '×' + counts[side][type] : ''))
+    .filter((type) => bySide[side].has(type))
+    .map((type) => PIECE_CN[type] + bySide[side].get(type).join('/'))
     .join('、');
-  return `双方现存子力——白方：${list('w')}；黑方：${list('b')}`;
+  return `双方现存子力（含所在格，此清单之外的格子均为空）——白方：${list('w')}；黑方：${list('b')}`;
 }
 
 function promptFor(payload) {
@@ -275,7 +284,7 @@ export default {
           stream: true,
           thinking: { type: 'disabled' },
           max_tokens: 120,
-          temperature: 1.0,
+          temperature: 0.7, // 1.0 时开局理论型幻觉概率明显偏高（如把已离场的 e4 兵当仍在场）；0.7 收紧事实、保留文采
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: promptFor(payload) },

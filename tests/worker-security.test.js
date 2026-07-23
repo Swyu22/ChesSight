@@ -112,9 +112,10 @@ test('the commentary prompt annotates move colors and lists remaining material',
   const prompt = JSON.parse(seen[0].body).messages.at(-1).content;
   // 每个半着标注执子方（偶数下标=白、奇数下标=黑）
   assert.match(prompt, /1\. e4（白） d5（黑） 2\. exd5（白）/);
-  // 从 FEN 推导的现存子力清单（吃兵后黑方 7 兵）
-  assert.match(prompt, /白方：王、后、车×2、象×2、马×2、兵×8/);
-  assert.match(prompt, /黑方：王、后、车×2、象×2、马×2、兵×7/);
+  // 从 FEN 推导的带格位子力清单（吃兵后：白兵含 d5 共 8 个、黑方 7 兵且无 d7 兵；
+  // 格位按 FEN 自上而下扫描顺序输出，故 d5 在白兵列表首位）
+  assert.match(prompt, /白方：王e1、后d1、车a1\/h1、象c1\/f1、马b1\/g1、兵d5\/a2\/b2\/c2\/d2\/f2\/g2\/h2/);
+  assert.match(prompt, /黑方：王e8、后d8、车a8\/h8、象c8\/f8、马b8\/g8、兵a7\/b7\/c7\/e7\/f7\/g7\/h7/);
   assert.match(prompt, /白方刚走了最新一步：exd5/);
 });
 
