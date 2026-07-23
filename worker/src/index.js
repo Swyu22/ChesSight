@@ -27,6 +27,8 @@ const OPENINGS = new Map([
 const SYSTEM_PROMPT =
   '你是一位国际象棋解说员，用中文解说，风格清晰而富有诗意。' +
   '针对给出的最新一步棋，点出它的意图、制造的威胁或与前着的呼应。' +
+  '棋谱每步已标注（白）/（黑）执子方，并附有双方现存子力清单；' +
+  '解说必须与这些标注一致：不得说错棋子颜色归属，不得提及清单中不存在或已被吃掉的棋子。' +
   '严格限制在两句话以内（不超过60字为佳）。' +
   '直接输出解说正文：不要复述着法记号、不要编号、不要引号、不要提及你是AI或解说员。';
 
@@ -178,12 +180,34 @@ function validatePayload(body) {
 }
 
 function fmtMoves(moves) {
+  // 每个半着显式标注执子方（偶数下标=白、奇数下标=黑）：
+  // 非思考模式的小模型难以从裸 SAN 自行推算颜色归属，标注后不再解说错方。
   let text = '';
   for (let i = 0; i < moves.length; i++) {
-    if (i % 2 === 0) text += (i / 2 + 1) + '.';
-    text += moves[i] + ' ';
+    if (i % 2 === 0) text += (i / 2 + 1) + '. ';
+    text += moves[i] + (i % 2 === 0 ? '（白）' : '（黑）') + ' ';
   }
   return text.trim();
+}
+
+const PIECE_CN = { k: '王', q: '后', r: '车', b: '象', n: '马', p: '兵' };
+const PIECE_ORDER = ['k', 'q', 'r', 'b', 'n', 'p'];
+
+// 从 FEN 棋盘段统计双方现存子力（FEN 已过 isFenShape 校验），
+// 供模型对照实况，避免解说到已被吃掉或不存在的棋子。
+function materialFromFen(fen) {
+  const counts = { w: {}, b: {} };
+  for (const char of fen.split(' ')[0]) {
+    if (!/[a-z]/i.test(char)) continue;
+    const side = char === char.toUpperCase() ? 'w' : 'b';
+    const type = char.toLowerCase();
+    counts[side][type] = (counts[side][type] || 0) + 1;
+  }
+  const list = (side) => PIECE_ORDER
+    .filter((type) => counts[side][type])
+    .map((type) => PIECE_CN[type] + (counts[side][type] > 1 ? '×' + counts[side][type] : ''))
+    .join('、');
+  return `双方现存子力——白方：${list('w')}；黑方：${list('b')}`;
 }
 
 function promptFor(payload) {
@@ -191,7 +215,7 @@ function promptFor(payload) {
     return `棋盘刚按开局库摆出「${payload.name}」（着法：${fmtMoves(payload.moves)}）。请用不超过两句话整体解说这个开局的核心意图与棋风气质。`;
   }
   const sideJustMoved = payload.moves.length % 2 === 1 ? '白方' : '黑方';
-  return `当前棋谱：${fmtMoves(payload.moves)}\n当前局面 FEN：${payload.fen}\n${sideJustMoved}刚走了最新一步：${payload.lastMove}。请解说这一步。`;
+  return `当前棋谱（每步已标注执子方）：${fmtMoves(payload.moves)}\n${materialFromFen(payload.fen)}\n${sideJustMoved}刚走了最新一步：${payload.lastMove}。请解说这一步。\n（当前局面 FEN 供参考：${payload.fen}）`;
 }
 
 export default {

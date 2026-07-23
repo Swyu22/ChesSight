@@ -99,6 +99,25 @@ test('accepts only constrained chess payloads and known opening IDs', async (t) 
   assert.equal(calls, 3);
 });
 
+test('the commentary prompt annotates move colors and lists remaining material', async (t) => {
+  const seen = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => { seen.push(options); return okUpstream(); });
+  const worker = await loadWorker();
+  // 白方 exd5 吃掉黑 d5 兵后的局面：白方仍是 8 兵，黑方只剩 7 兵
+  const fen = 'rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2';
+  const response = await worker.fetch(post({ moves: ['e4', 'd5', 'exd5'], lastMove: 'exd5', fen }), {
+    DEEPSEEK_API_KEY: 'test-only',
+  });
+  assert.equal(response.status, 200);
+  const prompt = JSON.parse(seen[0].body).messages.at(-1).content;
+  // 每个半着标注执子方（偶数下标=白、奇数下标=黑）
+  assert.match(prompt, /1\. e4（白） d5（黑） 2\. exd5（白）/);
+  // 从 FEN 推导的现存子力清单（吃兵后黑方 7 兵）
+  assert.match(prompt, /白方：王、后、车×2、象×2、马×2、兵×8/);
+  assert.match(prompt, /黑方：王、后、车×2、象×2、马×2、兵×7/);
+  assert.match(prompt, /白方刚走了最新一步：exd5/);
+});
+
 test('uses a fixed upstream URL and does not leak the secret in responses', async (t) => {
   const seen = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => {
