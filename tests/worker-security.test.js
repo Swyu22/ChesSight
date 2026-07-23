@@ -117,6 +117,26 @@ test('the commentary prompt annotates move colors and lists remaining material',
   assert.match(prompt, /白方：王e1、后d1、车a1\/h1、象c1\/f1、马b1\/g1、兵d5\/a2\/b2\/c2\/d2\/f2\/g2\/h2/);
   assert.match(prompt, /黑方：王e8、后d8、车a8\/h8、象c8\/f8、马b8\/g8、兵a7\/b7\/c7\/e7\/f7\/g7\/h7/);
   assert.match(prompt, /白方刚走了最新一步：exd5/);
+
+  // 被吃子明示：SAN 不含被吃子信息，客户端传 piece/captured 后 prompt 必须写明
+  // "黑方用兵吃掉了白方的后"（回归防护：解说吃错子）
+  const seen2 = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => { seen2.push(options); return okUpstream(); });
+  const capFen = 'rnb1kbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 3';
+  const capResponse = await worker.fetch(post({
+    moves: ['e4', 'e5', 'Qg4', 'Qxg4'],
+    lastMove: 'Qxg4',
+    fen: capFen,
+    piece: 'q',
+    captured: 'q',
+  }), { DEEPSEEK_API_KEY: 'test-only' });
+  assert.equal(capResponse.status, 200);
+  const capPrompt = JSON.parse(seen2[0].body).messages.at(-1).content;
+  assert.match(capPrompt, /这一步是黑方用后吃掉了白方的后/);
+  // 非法值仍拒绝
+  assert.equal((await worker.fetch(post({
+    moves: ['e4'], lastMove: 'e4', fen: VALID_FEN, captured: 'king',
+  }), { DEEPSEEK_API_KEY: 'test-only' })).status, 400);
 });
 
 test('uses a fixed upstream URL and does not leak the secret in responses', async (t) => {

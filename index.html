@@ -48,8 +48,11 @@
       <div class="buttons">
         <button id="btn-new" class="btn btn-primary">新对局</button>
         <button id="btn-flip" class="btn">🔄 翻转棋盘</button>
-        <button id="btn-undo" class="btn" disabled>上一步</button>
-        <button id="btn-redo" class="btn" disabled>下一步</button>
+        <div class="btn-row-3">
+          <button id="btn-undo" class="btn" disabled>上一步</button>
+          <button id="btn-pause" class="btn" disabled aria-pressed="false">⏸ 暂停</button>
+          <button id="btn-redo" class="btn" disabled>下一步</button>
+        </div>
         <button id="btn-control" class="btn btn-toggle active" aria-pressed="true">攻击范围</button>
         <button id="btn-safety" class="btn btn-toggle active" aria-pressed="true">安全标记</button>
         <button id="btn-xray" class="btn btn-toggle active" aria-pressed="true">X-Ray 杀伤线</button>

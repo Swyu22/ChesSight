@@ -40,7 +40,7 @@ const RATE_WINDOW_MS = 60000;
 const MAX_RATE_KEYS = 5000;
 const UPSTREAM_TIMEOUT_MS = 15000;
 const UPSTREAM_URL = 'https://api.deepseek.com/chat/completions';
-const ALLOWED_FIELDS = new Set(['moves', 'lastMove', 'fen', 'opening']);
+const ALLOWED_FIELDS = new Set(['moves', 'lastMove', 'fen', 'opening', 'piece', 'captured']);
 // 易位分支同样允许将军/将杀后缀：chess.js 对造成将军的易位产出 'O-O+' / 'O-O-O#'，
 // 且前端传的是整盘历史，漏掉该后缀会使此后整局的解说请求全部 400。
 const SAN = /^(?:O-O(?:-O)?[+#]?|[KQRBN]?(?:[a-h]|[1-8]|[a-h][1-8])?x?[a-h][1-8](?:=[QRBN])?[+#]?)$/;
@@ -168,6 +168,7 @@ function validatePayload(body) {
     if (typeof body.opening !== 'string' || !OPENINGS.has(body.opening)) {
       throw new RequestProblem(400, 'unknown_opening');
     }
+    if (body.piece !== undefined || body.captured !== undefined) throw new RequestProblem(400, 'unknown_field');
     const [name, expectedMoves] = OPENINGS.get(body.opening);
     if (!sameMoves(body.moves, expectedMoves)) throw new RequestProblem(400, 'opening_moves_mismatch');
     return { kind: 'opening', name, moves: body.moves };
@@ -177,7 +178,15 @@ function validatePayload(body) {
     throw new RequestProblem(400, 'invalid_last_move');
   }
   if (!isFenShape(body.fen)) throw new RequestProblem(400, 'invalid_fen');
-  return { kind: 'move', moves: body.moves, lastMove: body.lastMove, fen: body.fen };
+  // 可选：最新一步的动子与被吃子（chess.js 单字母记号）。SAN 不含被吃子信息，
+  // 由客户端显式提供，prompt 中明示给模型，杜绝"吃掉的是什么"解说错。
+  if (body.piece !== undefined && !(typeof body.piece === 'string' && /^[pnbrqk]$/.test(body.piece))) {
+    throw new RequestProblem(400, 'invalid_piece');
+  }
+  if (body.captured !== undefined && !(typeof body.captured === 'string' && /^[pnbrq]$/.test(body.captured))) {
+    throw new RequestProblem(400, 'invalid_captured');
+  }
+  return { kind: 'move', moves: body.moves, lastMove: body.lastMove, fen: body.fen, piece: body.piece, captured: body.captured };
 }
 
 function fmtMoves(moves) {
@@ -224,7 +233,13 @@ function promptFor(payload) {
     return `棋盘刚按开局库摆出「${payload.name}」（着法：${fmtMoves(payload.moves)}）。请用不超过两句话整体解说这个开局的核心意图与棋风气质。`;
   }
   const sideJustMoved = payload.moves.length % 2 === 1 ? '白方' : '黑方';
-  return `当前棋谱（每步已标注执子方）：${fmtMoves(payload.moves)}\n${materialFromFen(payload.fen)}\n${sideJustMoved}刚走了最新一步：${payload.lastMove}。请解说这一步。\n（当前局面 FEN 供参考：${payload.fen}）`;
+  // SAN 不含被吃子信息，被吃子由客户端提供并在此明示，模型不必（也不许）自行猜测
+  let moveNote = '';
+  if (payload.captured) {
+    const opponent = sideJustMoved === '白方' ? '黑方' : '白方';
+    moveNote = `（这一步是${sideJustMoved}用${PIECE_CN[payload.piece || 'p']}吃掉了${opponent}的${PIECE_CN[payload.captured]}）`;
+  }
+  return `当前棋谱（每步已标注执子方）：${fmtMoves(payload.moves)}\n${materialFromFen(payload.fen)}\n${sideJustMoved}刚走了最新一步：${payload.lastMove}${moveNote}。请解说这一步。\n（当前局面 FEN 供参考：${payload.fen}）`;
 }
 
 export default {

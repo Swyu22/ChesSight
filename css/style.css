@@ -399,6 +399,14 @@ body {
 
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #btn-setup { grid-column: 1 / -1; }
+/* 上一步 | 暂停 | 下一步 三钮同行：占满两列宽后内部三等分，收窄内边距以适应 */
+.btn-row-3 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.btn-row-3 .btn { padding: 11px 4px; }
 
 .btn {
   border: none;
